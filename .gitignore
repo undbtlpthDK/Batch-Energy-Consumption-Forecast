@@ -1,0 +1,47 @@
+# Python basics
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Venvs
+.venv/
+
+# Expermentations
+.ipynb_checkpoints/
+experiments/
+imgs/
+
+# OS
+.vscode/
+
+# Data
+/data/raw/*
+/data/processed/*
+/data/external/*
+
+#Internal Documentation
+docs_internal/
+
+# Allows DVC Tracking
+!/data/**/*.dvc
+!/dvc.yaml
+
+#MLflow
+mlruns/
+mlartifacts/
+
+#Secrets & credentials
+.env
+.env.*
+*.key
+*.pem
+
+#Docker runtime
+docker-volumes/
+postgres-data/
+
+#Logs
+*.log
+logs/
+tmp/
