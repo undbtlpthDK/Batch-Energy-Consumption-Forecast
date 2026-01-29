@@ -11,6 +11,8 @@ __pycache__/
 .ipynb_checkpoints/
 experiments/
 imgs/
+test.py
+test.ipynb
 
 # OS
 .vscode/
@@ -19,6 +21,7 @@ imgs/
 /data/raw/*
 /data/processed/*
 /data/external/*
+/data/original/*
 
 #Internal Documentation
 docs_internal/
@@ -45,3 +48,8 @@ postgres-data/
 *.log
 logs/
 tmp/
+
+
+#Some files
+.gitignore
+.cache.sqlite
