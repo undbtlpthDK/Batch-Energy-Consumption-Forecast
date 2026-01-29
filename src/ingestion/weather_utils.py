@@ -128,7 +128,7 @@ def fetch_and_save_weather_for_regions(
 
         region_data.append(df)
 
-        if output_dir != None:
+        if output_dir is not None:
             output_path = f"{output_dir}/{filename}"
             df.to_csv(output_path, index=False)
             print(f"Saved {mode} weather for region {region_id} → {filename}")

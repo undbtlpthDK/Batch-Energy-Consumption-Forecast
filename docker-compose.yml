@@ -1,17 +1,16 @@
-services: 
+services:
   postgres:
     image: postgres:15
     container_name: ml_postgres
     restart: unless-stopped
-
     ports:
       - "5432:5432"
-
     environment:
       POSTGRES_DB: energy_db
       POSTGRES_USER: energy_user
       POSTGRES_PASSWORD: energy_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
 volumes:
   postgres_data:

@@ -11,7 +11,7 @@ df_sm = pull_smart_meter_data()
 df_weather = pull_weather_data('backtest', df_regions)
 
 df_sm = timestamp_to_datetime(df_sm)
-df_weather = timestamp_to_datetime(df_weather)
+df_weather = timestamp_to_datetime(df_weather) # type: ignore
 
 sm_duplicated_row_amount = check_duplicates(df_sm, pk="customer_id")
 if sm_duplicated_row_amount > 0:
