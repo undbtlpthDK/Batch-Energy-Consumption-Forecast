@@ -42,9 +42,9 @@ def create_raw_tables(engine: Engine) -> None:
 
         """
         CREATE TABLE IF NOT EXISTS raw_customer_metadata (
-            customer_id VARCHAR PRIMARY KEY,
+            customer_id VARCHAR,
             customer_name VARCHAR,
-            object_id VARCHAR,
+            object_id VARCHAR PRIMARY KEY,
             object_address VARCHAR,
             metering_point_id BIGINT,
             tariff_code VARCHAR,
@@ -64,17 +64,17 @@ def create_raw_tables(engine: Engine) -> None:
         CREATE TABLE IF NOT EXISTS raw_smart_meter_readings (
             customer_id VARCHAR NOT NULL,
             timestamp TIMESTAMP NOT NULL,
-            object_id VARCHAR,
+            object_id VARCHAR NOT NULL,
             metering_point_id BIGINT,
             tariff_code VARCHAR,
             energy_import_kwh DOUBLE PRECISION NOT NULL,
             energy_export_kwh DOUBLE PRECISION NOT NULL,
             ingested_at TIMESTAMP NOT NULL,
 
-            CONSTRAINT pk_sm PRIMARY KEY (timestamp, customer_id),
+            CONSTRAINT pk_sm PRIMARY KEY (timestamp, object_id),
             CONSTRAINT fk_sm_customer
-                FOREIGN KEY (customer_id)
-                REFERENCES raw_customer_metadata (customer_id)
+                FOREIGN KEY (object_id)
+                REFERENCES raw_customer_metadata (object_id)
         );
         """,
 
