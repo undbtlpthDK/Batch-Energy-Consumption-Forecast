@@ -132,3 +132,87 @@ def load_dataframe(
         method="multi",
         chunksize=10_000,
     )
+
+
+def load_sm_metadata(engine: Engine) -> pd.DataFrame:
+    """
+    Load smart meter (customer/object) metadata from raw_customer_metadata.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per object_id with customer and location metadata.
+    """
+    query = """
+        SELECT
+            customer_id,
+            customer_name,
+            object_id,
+            object_address,
+            metering_point_id,
+            tariff_code,
+            address_latitude,
+            address_longitude,
+            region_id
+        FROM raw_customer_metadata
+    """
+
+    return pd.read_sql(query, engine)
+
+
+def load_sm_data(engine: Engine) -> pd.DataFrame:
+    """
+    Load smart meter readings data from raw_smart_meter_readings.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per energy_import_kwh and energy_export_kwh reaing
+        for each customer at one timestamp point
+    """
+    query = """
+        SELECT
+            customer_id,
+            timestamp,
+            object_id,
+            metering_point_id,
+            tariff_code VARCH,
+            energy_import_kwh,
+            energy_export_kwh,
+            ingested_at
+        FROM raw_smart_meter_readings
+    """
+
+    return pd.read_sql(query, engine)
+
+
+def load_weather_data(engine: Engine) -> pd.DataFrame:
+    """
+    Load weather data from raw_weather.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per wether parameters reading for each region
+        at one timestamp point.
+    """
+    query = """
+        SELECT
+            timestamp,
+            region_id,
+            data_type,
+            temperature_2m,
+            rain,
+            snowfall,
+            cloud_cover,
+            weather_code,
+            is_day,
+            wind_speed_10m ,
+            relative_humidity_2m,
+            apparent_temperature,
+            precipitation,
+            ingested_at
+        FROM raw_weather
+    """
+
+    return pd.read_sql(query, engine)
