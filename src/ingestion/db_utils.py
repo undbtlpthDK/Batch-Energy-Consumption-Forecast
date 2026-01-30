@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -160,43 +162,60 @@ def load_sm_metadata(engine: Engine) -> pd.DataFrame:
     return pd.read_sql(query, engine)
 
 
-def load_sm_data(engine: Engine) -> pd.DataFrame:
+def _validate_at_date(at_date: str) -> None:
+    """
+    Validate datetime string format: YYYY-MM-DD HH:MM:SS
+    """
+    try:
+        datetime.strptime(at_date, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        raise ValueError(
+            "at_date must follow format: YYYY-MM-DD HH:MM:SS "
+            "(e.g. 2017-04-01 00:00:00)"
+        )
+
+
+def load_sm_data(engine: Engine, at_date: str | None = None) -> pd.DataFrame:
     """
     Load smart meter readings data from raw_smart_meter_readings.
 
-    Returns
-    -------
-    pd.DataFrame
-        One row per energy_import_kwh and energy_export_kwh reaing
-        for each customer at one timestamp point
+    If at_date is provided, only rows with ingested_at > at_date are returned.
     """
-    query = """
+
+    base_query = """
         SELECT
             customer_id,
             timestamp,
             object_id,
             metering_point_id,
-            tariff_code VARCH,
+            tariff_code,
             energy_import_kwh,
             energy_export_kwh,
             ingested_at
         FROM raw_smart_meter_readings
     """
 
-    return pd.read_sql(query, engine)
+    params = None
+
+    if at_date is not None:
+        _validate_at_date(at_date)
+        base_query += " WHERE ingested_at > %(at_date)s"
+        params = {"at_date": at_date}
+
+    return pd.read_sql(base_query, engine, params=params)
 
 
-def load_weather_data(engine: Engine) -> pd.DataFrame:
+def load_weather_data(
+    engine: Engine, 
+    at_date: str | None = None
+    ) -> pd.DataFrame:
     """
     Load weather data from raw_weather.
 
-    Returns
-    -------
-    pd.DataFrame
-        One row per wether parameters reading for each region
-        at one timestamp point.
+    If at_date is provided, only rows with ingested_at > at_date are returned.
     """
-    query = """
+
+    base_query = """
         SELECT
             timestamp,
             region_id,
@@ -207,7 +226,7 @@ def load_weather_data(engine: Engine) -> pd.DataFrame:
             cloud_cover,
             weather_code,
             is_day,
-            wind_speed_10m ,
+            wind_speed_10m,
             relative_humidity_2m,
             apparent_temperature,
             precipitation,
@@ -215,4 +234,11 @@ def load_weather_data(engine: Engine) -> pd.DataFrame:
         FROM raw_weather
     """
 
-    return pd.read_sql(query, engine)
+    params = None
+
+    if at_date is not None:
+        _validate_at_date(at_date)
+        base_query += " WHERE ingested_at > %(at_date)s"
+        params = {"at_date": at_date}
+
+    return pd.read_sql(base_query, engine, params=params)
