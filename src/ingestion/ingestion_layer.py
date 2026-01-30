@@ -1,3 +1,5 @@
+from db_utils import (create_raw_tables, get_engine, load_dataframe,
+                      truncate_table)
 from ingestion_schemas import SCHEMA_REGISTRY
 from ingestion_utils import (add_ingestion_time, check_duplicates,
                              check_time_continuity, handle_duplicates,
@@ -11,7 +13,7 @@ df_sm = pull_smart_meter_data()
 df_weather = pull_weather_data('backtest', df_regions)
 
 df_sm = timestamp_to_datetime(df_sm)
-df_weather = timestamp_to_datetime(df_weather) # type: ignore
+df_weather = timestamp_to_datetime(df_weather)  # type: ignore
 
 sm_duplicated_row_amount = check_duplicates(df_sm, pk="customer_id")
 if sm_duplicated_row_amount > 0:
@@ -42,3 +44,18 @@ region_schema(df_regions)
 dfs = [df_id, df_regions, df_sm, df_weather]
 for df in dfs:
     print(df.info())
+
+engine = get_engine()
+create_raw_tables(engine)
+
+truncate_table("region_centers", engine)
+load_dataframe(df_regions, "region_centers", engine)
+
+truncate_table("raw_customer_metadata", engine)
+load_dataframe(df_id, "raw_customer_metadata", engine)
+
+# truncate_table("raw_smart_meter_readings", engine)
+# load_dataframe(df_sm, "raw_smart_meter_readings", engine)
+
+truncate_table("raw_weather", engine)
+load_dataframe(df_weather, "raw_weather", engine)

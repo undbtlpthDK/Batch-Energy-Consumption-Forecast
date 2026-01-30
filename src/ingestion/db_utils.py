@@ -15,10 +15,10 @@ def get_engine() -> Engine:
         pool_pre_ping=True,
     )
 
+
 def truncate_table(table_name: str, engine: Engine) -> None:
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE TABLE {table_name} CASCADE;"))
-
 
 
 def create_raw_tables(engine: Engine) -> None:
@@ -59,7 +59,7 @@ def create_raw_tables(engine: Engine) -> None:
 
 
         # SMART METER READINGS
-        
+
         """
         CREATE TABLE IF NOT EXISTS raw_smart_meter_readings (
             customer_id VARCHAR NOT NULL,
@@ -79,7 +79,7 @@ def create_raw_tables(engine: Engine) -> None:
         """,
 
         # WEATHER
-        
+
         """
         CREATE TABLE IF NOT EXISTS raw_weather (
             timestamp TIMESTAMP NOT NULL,
@@ -112,10 +112,7 @@ def create_raw_tables(engine: Engine) -> None:
             conn.execute(text(ddl))
 
 
-
-
 # Data loading
-
 def load_dataframe(
     df: pd.DataFrame,
     table_name: str,

@@ -13,6 +13,8 @@ experiments/
 imgs/
 test.py
 test.ipynb
+test_ingestioon.ipynb
+test_pool.ipynb
 
 # OS
 .vscode/
