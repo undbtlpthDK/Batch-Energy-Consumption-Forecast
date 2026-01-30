@@ -34,7 +34,7 @@ def smart_meter_schema() -> pa.DataFrameSchema:
             "energy_export_kwh": pa.Column(
                 float, checks=pa.Check(lambda x: x >= 0)
             ),
-            "tariff_code": pa.Column(str, nullable=True),
+            "tariff_code": pa.Column(str, nullable=True, required=False),
             "ingested_at": pa.Column("datetime"),
         }
     )

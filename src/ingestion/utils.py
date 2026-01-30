@@ -6,7 +6,7 @@ from weather_utils import fetch_and_save_weather_for_regions
 
 ROOT_DIR = Path.cwd()
 ORIGINAL_SM_DIR = ROOT_DIR / "data" / "original" / "lv_smart_meters"
-RAW_WEATHER_DATA_DIR = ROOT_DIR / "data" / "raw" / "weather"
+RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
 
 
 def pull_meta_data():
@@ -46,6 +46,33 @@ def pull_weather_data(mode: str, regions_df: pd.DataFrame):
         )
         wearther_df = pd.concat(historical_weather, ignore_index=True)
         return wearther_df
+
+
+def write_sm_metadata_raw(df: pd.DataFrame) -> Path:
+    """
+    Write smart meter metadata to raw parquet.
+    """
+    output_path = RAW_DATA_DIR / "smart_meter_metadata.parquet"
+    df.to_parquet(output_path, index=False)
+    return output_path
+
+
+def write_sm_readings_raw(df: pd.DataFrame) -> Path:
+    """
+    Write smart meter readings to raw parquet.
+    """
+    output_path = RAW_DATA_DIR / "smart_meter_readings.parquet"
+    df.to_parquet(output_path, index=False)
+    return output_path
+
+
+def write_weather_raw(df: pd.DataFrame) -> Path:
+    """
+    Write weather data to raw parquet.
+    """
+    output_path = RAW_DATA_DIR / "weather.parquet"
+    df.to_parquet(output_path, index=False)
+    return output_path
 
 
 def check_duplicates(df, pk: str):

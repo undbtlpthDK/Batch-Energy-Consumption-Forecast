@@ -1,11 +1,10 @@
 from db_utils import (create_raw_tables, get_engine, load_dataframe,
                       truncate_table)
-from ingestion_schemas import SCHEMA_REGISTRY
-from ingestion_utils import (add_ingestion_time, check_duplicates,
-                             check_time_continuity, handle_duplicates,
-                             pull_meta_data, pull_regions_data,
-                             pull_smart_meter_data, pull_weather_data,
-                             timestamp_to_datetime)
+from schemas import SCHEMA_REGISTRY
+from utils import (add_ingestion_time, check_duplicates, check_time_continuity,
+                   handle_duplicates, pull_meta_data, pull_regions_data,
+                   pull_smart_meter_data, pull_weather_data,
+                   timestamp_to_datetime)
 
 df_id = pull_meta_data()
 df_regions = pull_regions_data()
@@ -48,14 +47,17 @@ for df in dfs:
 engine = get_engine()
 create_raw_tables(engine)
 
+# Code bellow is dropping the content in db, so needed to be updated
+"""
 truncate_table("region_centers", engine)
 load_dataframe(df_regions, "region_centers", engine)
 
 truncate_table("raw_customer_metadata", engine)
 load_dataframe(df_id, "raw_customer_metadata", engine)
 
-# truncate_table("raw_smart_meter_readings", engine)
-# load_dataframe(df_sm, "raw_smart_meter_readings", engine)
+truncate_table("raw_smart_meter_readings", engine)
+load_dataframe(df_sm, "raw_smart_meter_readings", engine)
 
 truncate_table("raw_weather", engine)
 load_dataframe(df_weather, "raw_weather", engine)
+"""
