@@ -5,6 +5,7 @@ import pandas as pd
 
 ROOT_DIR = Path.cwd()
 RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
+PROCESSED_DATA_DIR = ROOT_DIR / "data" / "processed"
 
 
 def load_raw_parquet(df_name: str) -> pd.DataFrame:
@@ -23,6 +24,15 @@ def load_raw_parquet(df_name: str) -> pd.DataFrame:
     print(RAW_DATA_DIR / f"{df_name}.parquet")
     df = pd.read_parquet(RAW_DATA_DIR / f"{df_name}.parquet")
     return df
+
+
+def write_processed_sm_readings(df: pd.DataFrame) -> Path:
+    """
+    Write smart meter readings to raw parquet.
+    """
+    output_path = PROCESSED_DATA_DIR / "smart_meter_readings.parquet"
+    df.to_parquet(output_path, index=False)
+    return output_path
 
 
 def is_weekend(country: str, weekday: int) -> bool:

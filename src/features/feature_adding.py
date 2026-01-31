@@ -3,6 +3,48 @@ import pandas as pd
 from feature_utils import is_lv_holiday, is_weekend
 
 
+def join_weather(
+    df_sm: pd.DataFrame, df_id: pd.DataFrame, df_weather: pd.DataFrame
+) -> pd.DataFrame:
+    """Adds the wether features to the smart meter readings dataset
+
+    Parameters
+    ----------
+    df_sm : pd.DataFrame
+       smart meters readings
+    df_id : pd.DataFrame
+        customer metadata
+    df_weather : pd.DataFrame
+        weather readings
+
+    Returns
+    -------
+    pd.DataFrame
+        Enriched DataFrame with weather features
+    """
+
+    print(df_sm["timestamp"].isin(df_weather["timestamp"]).all())
+    df_sm = df_sm.sort_values(['object_id', 'timestamp']).copy()
+
+    df_sm["object_id"] = df_sm["object_id"].astype(str)
+    df_id["object_id"] = df_id["object_id"].astype(str)
+
+    df_sm = df_sm.join(
+        df_id.set_index("object_id")[["region_id"]],
+        how="left",
+        on="object_id",
+    )
+
+    df_sm = pd.merge(
+        left=df_sm,
+        right=df_weather,
+        how="left",
+        left_on=["timestamp", "region_id"],
+        right_on=["timestamp", "region_id"],
+    )
+    return df_sm
+
+
 def user_normalization(df: pd.DataFrame) -> pd.DataFrame:
     """Calculates the mean and std baseline for the last 90 days
 
@@ -148,6 +190,7 @@ def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Enriched DataFrame
     """
+    df = df.sort_values(["object_id", "timestamp"]).copy()
     df = _add_dates(df)
     df = _add_hours(df)
     df = _add_weeks(df)
