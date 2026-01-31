@@ -3,6 +3,25 @@ import pandas as pd
 from feature_utils import is_lv_holiday, is_weekend
 
 
+def user_normalization(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates the mean and std baseline for the last 90 days
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Smart Meters reading DataFrame where
+        energy_import_kwh and energy_export_kwh columns should exists
+    Returns
+    -------
+    pd.DataFrame
+        Enriched DataFrame with user consumption baseline
+    """
+    df_norm = df.sort_values(['object_id', 'timestamp']).copy()
+    df_norm = _calculate_rolling_mean(df_norm, 24*90, mode="normalization")
+    df_norm = _calculate_rolling_std(df_norm, 24*90, mode="normalization")
+    return df_norm
+
+
 def add_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
     """Adds the rolling aggregated statistics
     columns added:
@@ -25,56 +44,56 @@ def add_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
     df_rolled = df.sort_values(['object_id', 'timestamp']).copy()
 
     for window in windows:
-        df_rolled = _calculate_rolling_sum(df_rolled, window)
-        df_rolled = _calculate_rolling_mean(df_rolled, window)
-        df_rolled = _calculate_rolling_std(df_rolled, window)
+        df_rolled = _calculate_rolling_sum(df_rolled, window, mode="rolling")
+        df_rolled = _calculate_rolling_mean(df_rolled, window, mode="rolling")
+        df_rolled = _calculate_rolling_std(df_rolled, window, mode="rolling")
 
     return df_rolled
 
 
-def _calculate_rolling_sum(df: pd.DataFrame, window: int) -> pd.DataFrame:
-    rolling_sum = (
-        df
-        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
+def _calculate_rolling_stat(
+    df: pd.DataFrame,
+    window: int,
+    mode: str,
+    stat: str,
+) -> pd.DataFrame:
+    agg = getattr(
+        df.groupby("object_id")[["energy_import_kwh", "energy_export_kwh"]]
         .shift(1)
-        .rolling(window=window)
-        .sum()
-        .reset_index(level=0, drop=True)
+        .rolling(window=window),
+        stat,
     )
-    df[
-        [f"import_rolling_sum_{window}", f"export_rolling_sum_{window}"]
-    ] = rolling_sum
+
+    values = agg().reset_index(level=0, drop=True)
+
+    if mode == "rolling":
+        cols = [
+            f"import_rolling_{stat}_{window}",
+            f"export_rolling_{stat}_{window}",
+        ]
+    elif mode == "normalization":
+        days = window // 24
+        cols = [
+            f"import_{stat}_for_{days}_days",
+            f"export_{stat}_for_{days}_days",
+        ]
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
+
+    df[cols] = values
     return df
 
 
-def _calculate_rolling_mean(df: pd.DataFrame, window: int) -> pd.DataFrame:
-    rolling_mean = (
-        df
-        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
-        .shift(1)
-        .rolling(window=window)
-        .mean()
-        .reset_index(level=0, drop=True)
-    )
-    df[
-        [f"import_rolling_mean_{window}", f"export_rolling_mean_{window}"]
-    ] = rolling_mean
-    return df
+def _calculate_rolling_sum(df, window, mode):
+    return _calculate_rolling_stat(df, window, mode, "sum")
 
 
-def _calculate_rolling_std(df: pd.DataFrame, window: int) -> pd.DataFrame:
-    rolling_std = (
-        df
-        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
-        .shift(1)
-        .rolling(window=window)
-        .std()
-        .reset_index(level=0, drop=True)
-    )
-    df[
-        [f"import_rolling_std_{window}", f"export_rolling_std_{window}"]
-        ] = rolling_std
-    return df
+def _calculate_rolling_mean(df, window, mode):
+    return _calculate_rolling_stat(df, window, mode, "mean")
+
+
+def _calculate_rolling_std(df, window, mode):
+    return _calculate_rolling_stat(df, window, mode, "std")
 
 
 def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
