@@ -3,9 +3,13 @@ import pandas as pd
 from feature_utils import is_lv_holiday, is_weekend
 
 
-def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Adds the lagged energy consumption and generation features to DataFrame
-
+def add_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds the rolling aggregated statistics
+    columns added:
+        import_rolling_sum_n, import_export_sum_n per each window
+        import_rolling_mean_n, import_export_mean_n per each window
+        import_rolling_std_n, import_export_std_n per each window
+        where n is the size of the rolling value
     Parameters
     ----------
     df : pd.DataFrame
@@ -14,9 +18,82 @@ def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Enriched DataFrame with energy related lags
+        Enriched DataFrame with energy rolling statistics
+    """
+    # TODO Add as parameter
+    windows = [3, 5, 8, 10, 24, 36, 48, 96, 168, 192]
+    df_rolled = df.sort_values(['object_id', 'timestamp']).copy()
+
+    for window in windows:
+        df_rolled = _calculate_rolling_sum(df_rolled, window)
+        df_rolled = _calculate_rolling_mean(df_rolled, window)
+        df_rolled = _calculate_rolling_std(df_rolled, window)
+
+    return df_rolled
+
+
+def _calculate_rolling_sum(df: pd.DataFrame, window: int) -> pd.DataFrame:
+    rolling_sum = (
+        df
+        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
+        .shift(1)
+        .rolling(window=window)
+        .sum()
+        .reset_index(level=0, drop=True)
+    )
+    df[
+        [f"import_rolling_sum_{window}", f"export_rolling_sum_{window}"]
+    ] = rolling_sum
+    return df
+
+
+def _calculate_rolling_mean(df: pd.DataFrame, window: int) -> pd.DataFrame:
+    rolling_mean = (
+        df
+        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
+        .shift(1)
+        .rolling(window=window)
+        .mean()
+        .reset_index(level=0, drop=True)
+    )
+    df[
+        [f"import_rolling_mean_{window}", f"export_rolling_mean_{window}"]
+    ] = rolling_mean
+    return df
+
+
+def _calculate_rolling_std(df: pd.DataFrame, window: int) -> pd.DataFrame:
+    rolling_std = (
+        df
+        .groupby('object_id')[['energy_import_kwh','energy_export_kwh']]
+        .shift(1)
+        .rolling(window=window)
+        .std()
+        .reset_index(level=0, drop=True)
+    )
+    df[
+        [f"import_rolling_std_{window}", f"export_rolling_std_{window}"]
+        ] = rolling_std
+    return df
+
+
+def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds the lagged energy consumption and generation features to DataFrame
+    columns added:
+        import_lag__n, export_lag_n per each lag
+        where n is the size of the lag horizon
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Smart Meters reading DataFrame where
+        energy_import_kwh and energy_export_kwh columns should exists
+    Returns
+    -------
+    pd.DataFrame
+        Enriched DataFrame with energy lags
     """
     # Specifies the range of lags applied
+    # TODO Add as parameter
     lags = [1, 2, 3, 4, 5, 24, 48, 168]
 
     df_lagged = df.sort_values(["object_id", "timestamp"]).copy()
@@ -35,7 +112,6 @@ def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
     """Add the calendar values based on "timestamp" to DataFrame
-
     columns added:
         date
         hour, hour_sin, hour_coos of the day
