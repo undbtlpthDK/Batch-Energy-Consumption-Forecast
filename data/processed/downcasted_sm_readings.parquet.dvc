@@ -1,0 +1,5 @@
+outs:
+- md5: c792105f2e926e4bff6ffb4afafcf7c7
+  size: 1017645282
+  hash: md5
+  path: downcasted_sm_readings.parquet
