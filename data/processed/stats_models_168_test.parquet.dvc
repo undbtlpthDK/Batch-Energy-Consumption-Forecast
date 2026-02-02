@@ -1,0 +1,5 @@
+outs:
+- md5: 7eeeff51c53b1429a29cb7b9d052870a
+  size: 7583729
+  hash: md5
+  path: stats_models_168_test.parquet
