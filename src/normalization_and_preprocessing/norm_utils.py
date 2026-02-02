@@ -202,7 +202,8 @@ def visualize_splits(splits: dict) -> None:
 
     plt.yticks([])
     plt.xlabel("Time")
-    plt.title("Time-based Split: Rolling / Train / Dev / Test for 168 Hours long multi-horizon forecast")
+    plt.title("Time-based Split: Rolling / Train / Dev / Test for \
+              168 Hours long multi-horizon forecast")
     plt.legend(loc="upper center", ncol=5, frameon=False)
     plt.tight_layout()
     plt.show()
@@ -307,11 +308,11 @@ def energy_import_export_split(df: pd.DataFrame):
     return df_import, df_export
 
 
-def prepare_splits(df: pd.DataFrame, splits: dict, mode: str):
+def prepare_splits(df: pd.DataFrame, splits: dict, model_type: str):
 
-    if mode == "naive" or mode == "ARIMA":
+    if model_type == "naive" or model_type == "ARIMA":
         df_to_split = df[['object_id', 'timestamp', 'energy_kwh']].copy()
-    elif mode == "LightGBM" or mode == "PR":
+    elif model_type == "LightGBM" or model_type == "PR":
         df_to_split = df.drop(columns=[
             'month', "hour", "week", "weather_code", "region_id"]
         )
@@ -366,9 +367,9 @@ def zscore_scale_float_columns(
     Returns
     -------
     df_scaled : pd.DataFrame
-        Scalled DataFrame
+        Scaled DataFrame
     stats : dict {col: (mean, std)}
-        Dictionary to reapply scalaing without data leakage 
+        Dictionary to reapply scaling without data leakage
     """
 
     df = df.copy()
@@ -376,7 +377,7 @@ def zscore_scale_float_columns(
     float_cols = (
         df.select_dtypes(include="float")
         .columns
-        .difference(exclude)
+        .difference(exclude)  # type: ignore
     )
 
     if stats is None:
@@ -394,3 +395,19 @@ def zscore_scale_float_columns(
                 df[col] = (df[col] - mean) / std
 
     return df, stats
+
+
+def prepare_multi_horizon_dataset(
+    dataset_name: str,
+    horizon: int,
+    data_type: str
+) -> pd.DataFrame:
+    df = load_processed_parquet(dataset_name)
+    df = downcast_float_in_df(df, [])
+    df = drop_warmup_rows(df, n=horizon)
+    df = normalize_bool_columns(df)
+    validate_no_missing_after_warmup(df)
+
+    if data_type == "import":
+        df_import, _ = energy_import_export_split(df)
+    return df_import
