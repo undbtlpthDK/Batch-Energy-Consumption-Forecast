@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
 from feature_utils import is_lv_holiday, is_weekend
@@ -64,7 +66,76 @@ def user_normalization(df: pd.DataFrame) -> pd.DataFrame:
     return df_norm
 
 
-def add_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
+def convert_to_multi_horizon(    
+    df: pd.DataFrame,
+    window: int,
+) -> pd.DataFrame:
+    df = add_horizon_index(df, window)
+    df = freeze_history_features(df, window)
+    return df
+
+
+def add_horizon_index(
+    df: pd.DataFrame,
+    horizon: int,
+) -> pd.DataFrame:
+    df = (
+        df
+        .sort_values(["object_id", "timestamp"])
+        .copy()
+    )
+
+    df["horizon_index"] = df.groupby("object_id").cumcount() % horizon
+    return df.reset_index(drop=True)
+
+
+def freeze_history_features(
+    df: pd.DataFrame,
+    window: int,
+) -> pd.DataFrame:
+    df = (
+        df
+        .sort_values(["object_id", "timestamp"])
+        .copy()
+    )
+
+    freeze_cols = [
+        c for c in df.columns
+        if c.startswith((
+            "import_lag",
+            "export_lag",
+            "import_rolling",
+            "export_rolling",
+        ))
+    ]
+
+    def _freeze_block(g: pd.DataFrame) -> pd.DataFrame:
+        g = g.copy()
+        for start in range(0, len(g), window):
+            end = min(start + window, len(g))
+            base_row = g.iloc[start]
+
+            # freeze lag / rolling features
+            g.loc[g.index[start:end], freeze_cols] = base_row[freeze_cols].values
+
+            # add forecast_origin_time
+            g.loc[g.index[start:end], "forecast_origin_time"] = (base_row["timestamp"] - pd.Timedelta(hours=1))
+
+        return g
+
+    return (
+        df
+        .groupby("object_id", group_keys=False)
+        .apply(_freeze_block)
+        .reset_index(drop=True)
+    )
+
+
+def add_rolling_stats(
+    df: pd.DataFrame,
+    windows: List[int],
+    stats: List['str']
+) -> pd.DataFrame:
     """Adds the rolling aggregated statistics
     columns added:
         import_rolling_sum_n, import_export_sum_n per each window
@@ -76,19 +147,31 @@ def add_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
     df : pd.DataFrame
         Smart Meters reading DataFrame where
         energy_import_kwh and energy_export_kwh columns should exists
+    windows : List[int]
+        rolling window sizes
+    stats : List[str]
+        rolling statistics to compute (e.g. ["mean", "sum"])
+
     Returns
     -------
     pd.DataFrame
         Enriched DataFrame with energy rolling statistics
     """
-    # TODO Add as parameter
-    windows = [3, 5, 8, 10, 24, 36, 48, 96, 168, 192]
     df_rolled = df.sort_values(['object_id', 'timestamp']).copy()
 
     for window in windows:
-        df_rolled = _calculate_rolling_sum(df_rolled, window, mode="rolling")
-        df_rolled = _calculate_rolling_mean(df_rolled, window, mode="rolling")
-        df_rolled = _calculate_rolling_std(df_rolled, window, mode="rolling")
+        if "sum" in stats:
+            df_rolled = _calculate_rolling_sum(
+                df_rolled, window, mode="rolling"
+                )
+        if "mean" in stats:
+            df_rolled = _calculate_rolling_mean(
+                df_rolled, window, mode="rolling"
+                )
+        if "std" in stats:
+            df_rolled = _calculate_rolling_std(
+                df_rolled, window, mode="rolling"
+                )
 
     return df_rolled
 
@@ -138,7 +221,10 @@ def _calculate_rolling_std(df, window, mode):
     return _calculate_rolling_stat(df, window, mode, "std")
 
 
-def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
+def add_lagged_energy_values(
+    df: pd.DataFrame,
+    lags: List[int]
+) -> pd.DataFrame:
     """Adds the lagged energy consumption and generation features to DataFrame
     columns added:
         import_lag__n, export_lag_n per each lag
@@ -153,9 +239,6 @@ def add_lagged_energy_values(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Enriched DataFrame with energy lags
     """
-    # Specifies the range of lags applied
-    # TODO Add as parameter
-    lags = [1, 2, 3, 4, 5, 24, 48, 168]
 
     df_lagged = df.sort_values(["object_id", "timestamp"]).copy()
 

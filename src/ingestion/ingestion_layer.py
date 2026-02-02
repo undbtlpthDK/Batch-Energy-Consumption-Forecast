@@ -1,5 +1,4 @@
-from db_utils import (create_raw_tables, get_engine, load_dataframe,
-                      truncate_table)
+from db_utils import create_raw_tables, get_engine
 from schemas import SCHEMA_REGISTRY
 from utils import (add_ingestion_time, check_duplicates, check_time_continuity,
                    handle_duplicates, pull_meta_data, pull_regions_data,
