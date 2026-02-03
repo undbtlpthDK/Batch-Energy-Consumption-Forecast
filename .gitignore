@@ -12,9 +12,10 @@ __pycache__/
 experiments/
 imgs/
 test.py
-test.ipynb
+test*.ipynb
 test_ingestioon.ipynb
 test_pool.ipynb
+example*.ipynb
 
 # OS
 .vscode/
@@ -55,3 +56,4 @@ tmp/
 #Some files
 .gitignore
 .cache.sqlite
+*.ckpt
