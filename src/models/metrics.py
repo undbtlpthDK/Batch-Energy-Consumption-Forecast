@@ -76,7 +76,7 @@ def calculate_RMSE(
         .groupby(id_col)["error"]
         .mean()
         .rename("RMSE")
-        .agg(np.sqrt)
+        .pipe(np.sqrt)
     )
 
     mean_rmse_score_per_id = rmse_per_id.mean()
