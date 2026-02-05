@@ -1,5 +1,5 @@
 outs:
-- md5: 0df8c5f109af6f7baff62e883c95a082
-  size: 21160257
+- md5: 2fd60a6afbd2443a9ddb359c4d20e674
+  size: 18612354
   hash: md5
   path: lgbm_multi_horizon_24_test.parquet

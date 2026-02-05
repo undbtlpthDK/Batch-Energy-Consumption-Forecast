@@ -1,5 +1,5 @@
 outs:
-- md5: c383a60378eb28805618a812810678bc
-  size: 21162855
+- md5: 36f3a9aebe0f391687e6b16d76127b76
+  size: 18608928
   hash: md5
   path: pr_multi_horizon_24_test.parquet
