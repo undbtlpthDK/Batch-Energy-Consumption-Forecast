@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import lightgbm as lgb
-import metrics
 import mlflow
 import pandas as pd
 
-import artifacts
+import src.energycast.evaluation.metrics as metrics
+import src.energycast.models.artifacts as artifacts
 
 ROOT = Path.cwd()
 PROCESSED = ROOT / "data" / "processed"
@@ -160,7 +160,9 @@ def predict_per_customer(customer_models, customer_data):
             pd.DataFrame(
                 {
                     "object_id": customer,
-                    "y_true": customer_data[customer]["y_test"].to_numpy().reshape(-1),
+                    "y_true": customer_data[customer]["y_test"]
+                    .to_numpy()
+                    .reshape(-1),
                     "y_pred": customer_data[customer]["y_pred"],
                 }
             )
@@ -174,11 +176,17 @@ def main():
 
     data_tracking = {
         "train_data": str(PROCESSED / "lgbm_multi_horizon_24_train.parquet"),
-        "train_dvc": str(PROCESSED / f"{"lgbm_multi_horizon_24_train.parquet"}.dvc"),
+        "train_dvc": str(
+            PROCESSED / f"{"lgbm_multi_horizon_24_train.parquet"}.dvc"
+        ),
         "dev_data": str(PROCESSED / "lgbm_multi_horizon_24_dev.parquet"),
-        "dev_dvc": str(PROCESSED / f"{"lgbm_multi_horizon_24_dev.parquet"}.dvc"),
+        "dev_dvc": str(
+            PROCESSED / f"{"lgbm_multi_horizon_24_dev.parquet"}.dvc"
+        ),
         "test_data": str(PROCESSED / "lgbm_multi_horizon_24_test.parquet"),
-        "test_dvc": str(PROCESSED / f"{"lgbm_multi_horizon_24_test.parquet"}.dvc"),
+        "test_dvc": str(
+            PROCESSED / f"{"lgbm_multi_horizon_24_test.parquet"}.dvc"
+        ),
     }
 
     with mlflow.start_run(run_name="LightGBM"):

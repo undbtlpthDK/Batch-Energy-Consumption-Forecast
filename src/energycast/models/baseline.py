@@ -1,10 +1,10 @@
 from pathlib import Path
 
-import metrics
 import mlflow
 import pandas as pd
 
-import artifacts
+from src.energycast.evaluation import metrics
+from src.energycast.models import artifacts
 
 ROOT = Path.cwd()
 ARTIFACTS = ROOT / "artifacts"
@@ -59,18 +59,14 @@ def seasonal_naive_forecast(
         .reset_index(drop=True)
     )
 
-    df_all["y_pred"] = (
-        df_all
-        .groupby(group_col)[target_col]
-        .shift(season)
-    )
+    df_all["y_pred"] = df_all.groupby(group_col)[target_col].shift(season)
 
     return (
-        df_all
-        .loc[df_all[time_col].isin(df_dev[time_col])]
+        df_all.loc[df_all[time_col].isin(df_dev[time_col])]
         .dropna(subset=["y_pred"])
-        .assign(y_true=lambda x: x[target_col])
-        [[group_col, time_col, "y_true", "y_pred"]]
+        .assign(y_true=lambda x: x[target_col])[
+            [group_col, time_col, "y_true", "y_pred"]
+        ]
     )
 
 
@@ -129,12 +125,29 @@ def run_seasonal_naive_baseline(
 
 
 def main():
+    df_train_name = "stats_models_168_train.parquet"
+    df_dev_name = "stats_models_168_dev.parquet"
     df_train = pd.read_parquet(PROCESSED / "stats_models_168_train.parquet")
     df_dev = pd.read_parquet(PROCESSED / "stats_models_168_dev.parquet")
 
-    mlflow.set_experiment("EnergyCast-Baselines")
+    data_tracking = {
+        "train_data": str(PROCESSED / df_train_name),
+        "train_dvc": str(PROCESSED / f"{df_train_name}.dvc"),
+        "dev_data": str(PROCESSED / df_dev_name),
+        "dev_dvc": str(PROCESSED / f"{df_dev_name}.dvc"),
+    }
 
     with mlflow.start_run(run_name="seasonal_naive"):
+        mlflow.set_experiment("EnergyCast-Baselines")
+
+        mlflow.log_params(
+            {
+                "train_data": data_tracking["train_data"],
+                "dev_data": data_tracking["dev_data"],
+            }
+        )
+        config["data_tracking"] = data_tracking
+
         results, per_customer, forecasts = run_seasonal_naive_baseline(
             df_train,
             df_dev,
@@ -149,7 +162,7 @@ def main():
             model_name="seasonal_naive",
         )
 
-        artifacts.save_run_artifacts(      # type: ignore
+        artifacts.save_run_artifacts(  # type: ignore
             run_dir=run_dir,
             metrics=results,
             per_customer_df=per_customer,

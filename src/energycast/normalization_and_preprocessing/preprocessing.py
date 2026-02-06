@@ -3,6 +3,7 @@ import norm_utils
 # H - 168
 
 splits = norm_utils.load_splits()
+
 df_h168 = norm_utils.prepare_multi_horizon_dataset(
     dataset_name="multi_horizon_reading_h168",
     horizon=168,
@@ -80,7 +81,7 @@ norm_utils.write_normalized_parquet(
     lgbm_train_24, "lgbm_multi_horizon_24_train"
 )
 norm_utils.write_normalized_parquet(
-    lgbm_dev_24, "llgbm_multi_horizon_24_dev"
+    lgbm_dev_24, "lgbm_multi_horizon_24_dev"
 )
 norm_utils.write_normalized_parquet(
     lgbm_test_24, "lgbm_multi_horizon_24_test"

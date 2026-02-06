@@ -57,3 +57,6 @@ tmp/
 .gitignore
 .cache.sqlite
 *.ckpt
+
+
+artifacts/

@@ -138,9 +138,9 @@ def downcast_float_in_df(
 def load_splits() -> dict:
     start = pd.Timestamp("2017-04-01 01:00:00")
     roll_and_lag_end = start + pd.DateOffset(days=7)
-    train_end = roll_and_lag_end + pd.DateOffset(days=364)
+    train_end = roll_and_lag_end + pd.DateOffset(days=637)
     dev_end = train_end + pd.DateOffset(days=91)
-    test_end = dev_end + pd.DateOffset(days=364)
+    test_end = dev_end + pd.DateOffset(days=357)
     end = pd.Timestamp("2020-04-01 00:00:00")
     splits = {
         "Rolling offset": [start, roll_and_lag_end],

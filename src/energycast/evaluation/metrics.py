@@ -9,31 +9,24 @@ def evaluate_forecasts(
     id_col: str,
 ):
 
-    mae_score, mae_per_id = calculate_MAE(
-        df, pred_col, actual_col, id_col
-    )
+    mae_score, mae_per_id = calculate_MAE(df, pred_col, actual_col, id_col)
 
     mean_rmse_per_id, global_rmse, rmse_per_id = calculate_RMSE(
         df, pred_col, actual_col, id_col
     )
 
-    global_smape, smape_per_id = calculate_sMAPE(
-        df, pred_col, actual_col, id_col
-    )
+    global_smape, smape_per_id = calculate_sMAPE(df, pred_col, actual_col, id_col)
 
-    per_customer = (
-        pd.concat(
-            [mae_per_id, rmse_per_id, smape_per_id],
-            axis=1,
-        )
-        .reset_index()
-    )
+    per_customer = pd.concat(
+        [mae_per_id, rmse_per_id, smape_per_id],  # type: ignore
+        axis=1,
+    ).reset_index()  # type: ignore
 
     results = {
-        "MAE_macro": mae_score,
-        "RMSE_macro": mean_rmse_per_id,
-        "RMSE_global": global_rmse,
-        "sMAPE_macro": global_smape,
+        "MAE_macro": float(mae_score),
+        "RMSE_macro": float(mean_rmse_per_id),
+        "RMSE_global": float(global_rmse),
+        "sMAPE_macro": float(global_smape),
     }
 
     return results, per_customer
@@ -48,12 +41,7 @@ def calculate_MAE(
     df_mae = df.copy()
     df_mae["error"] = np.abs(df_mae[actual_col] - df_mae[pred_col])
 
-    mae_per_id = (
-        df_mae
-        .groupby(id_col)["error"]
-        .mean()
-        .rename("MAE")
-    )
+    mae_per_id = df_mae.groupby(id_col)["error"].mean().rename("MAE")
 
     MAE_score = mae_per_id.mean()
 
@@ -71,13 +59,7 @@ def calculate_RMSE(
 
     global_rmse = np.sqrt(df_RMSE["error"].mean())
 
-    rmse_per_id = (
-        df_RMSE
-        .groupby(id_col)["error"]
-        .mean()
-        .rename("RMSE")
-        .pipe(np.sqrt)
-    )
+    rmse_per_id = df_RMSE.groupby(id_col)["error"].mean().rename("RMSE").pipe(np.sqrt)
 
     mean_rmse_score_per_id = rmse_per_id.mean()
 
@@ -100,12 +82,7 @@ def calculate_sMAPE(
         np.abs(df_smape[actual_col] - df_smape[pred_col]) / denom,
     )
 
-    smape_per_id = (
-        df_smape
-        .groupby(id_col)["error"]
-        .mean()
-        .rename("sMAPE")
-    )
+    smape_per_id = df_smape.groupby(id_col)["error"].mean().rename("sMAPE")
 
     global_smape = smape_per_id.mean()
 
