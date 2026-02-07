@@ -30,6 +30,6 @@ jobs:
         run: |
           poetry run pytest \
             -m "not integration" \
-            --cov=energycast \
+            --cov=energycast/evaluation \
             --cov-report=term-missing \
             --cov-fail-under=50

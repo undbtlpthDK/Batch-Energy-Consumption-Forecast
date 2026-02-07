@@ -153,4 +153,3 @@ def is_lv_holiday(d: pd.Timestamp) -> bool:
     """
     d_local = d.normalize().date()
     return d_local in latvia_public_holidays(d_local.year)
-    return d_local in latvia_public_holidays(d_local.year)
