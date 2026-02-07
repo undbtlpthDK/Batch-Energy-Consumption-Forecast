@@ -33,7 +33,7 @@ def add_calendar_features(
     pd.DataFrame
         Enriched DataFrame
     """
-    df = df.sort_values(["object_id", "timestamp"]).copy()
+
     if hours:
         df = add_hours(df)
     if dates:
