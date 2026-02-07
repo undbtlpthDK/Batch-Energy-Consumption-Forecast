@@ -6,9 +6,11 @@ import pandas as pd
 
 def add_calendar_features(
     df: pd.DataFrame,
+    *,
     hours: bool = True,
     dates: bool = True,
     weekdays: bool = True,
+    weekends: bool = True,
     holidays: bool = True,
     weeks: bool = True,
     months: bool = True,
@@ -37,7 +39,10 @@ def add_calendar_features(
     if dates:
         df = add_dates(df)
     if weekdays:
-        df = add_weekdays(df)
+        if weekends:
+            df = add_weekdays(df, weekends=True)
+        else:
+            df = add_weekdays(df)
     if holidays:
         df = add_holidays(df)
     if weeks:
@@ -61,9 +66,10 @@ def add_weeks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_weekdays(df: pd.DataFrame) -> pd.DataFrame:
+def add_weekdays(df: pd.DataFrame, weekends: bool = False) -> pd.DataFrame:
     df["weekday"] = df["timestamp"].dt.dayofweek
-    df["is_weekend"] = df["weekday"].apply(lambda d: is_weekend("lv", d))
+    if weekends:
+        df["is_weekend"] = df["weekday"].apply(lambda d: is_weekend("lv", d))
     return df
 
 
@@ -146,4 +152,5 @@ def is_lv_holiday(d: pd.Timestamp) -> bool:
         True - is holiday
     """
     d_local = d.normalize().date()
+    return d_local in latvia_public_holidays(d_local.year)
     return d_local in latvia_public_holidays(d_local.year)
