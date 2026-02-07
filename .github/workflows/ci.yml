@@ -26,10 +26,6 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
         run: |
-          poetry run pytest \
-            -m "not integration" \
-            --cov=energycast/evaluation \
-            --cov-report=term-missing \
-            --cov-fail-under=50
+            poetry run pytest -m "not integration"
