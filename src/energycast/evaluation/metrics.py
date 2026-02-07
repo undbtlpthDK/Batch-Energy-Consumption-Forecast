@@ -7,15 +7,35 @@ def evaluate_forecasts(
     pred_col: str,
     actual_col: str,
     id_col: str,
-):
+) -> tuple[dict[str, float], pd.DataFrame]:
+    """Calculates MAE, RMSE, sMAPE per prediction
 
-    mae_score, mae_per_id = calculate_MAE(df, pred_col, actual_col, id_col)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        df with the predicted column
+    pred_col : str
+        name of column where predicted value is stored
+    actual_col : str
+        name of column where original value is stored
+    id_col : str
+        name of column where id is stored
 
-    mean_rmse_per_id, global_rmse, rmse_per_id = calculate_RMSE(
+    Returns
+    -------
+    tuple[dict[str, float], pd.DataFrame]
+        dictionary of average metrics values and
+        DataFrame with metrics calculated by id
+    """
+    average_mae, mae_per_id = calculate_MAE(df, pred_col, actual_col, id_col)
+
+    average_rmse, rmse_per_id = calculate_RMSE(
         df, pred_col, actual_col, id_col
     )
 
-    global_smape, smape_per_id = calculate_sMAPE(df, pred_col, actual_col, id_col)
+    average_smape, smape_per_id = calculate_sMAPE(
+        df, pred_col, actual_col, id_col
+    )
 
     per_customer = pd.concat(
         [mae_per_id, rmse_per_id, smape_per_id],  # type: ignore
@@ -23,10 +43,9 @@ def evaluate_forecasts(
     ).reset_index()  # type: ignore
 
     results = {
-        "MAE_macro": float(mae_score),
-        "RMSE_macro": float(mean_rmse_per_id),
-        "RMSE_global": float(global_rmse),
-        "sMAPE_macro": float(global_smape),
+        "MAE_average": float(average_mae),
+        "RMSE_average": float(average_rmse),
+        "sMAPE_average": float(average_smape),
     }
 
     return results, per_customer
@@ -37,15 +56,34 @@ def calculate_MAE(
     pred_col: str,
     actual_col: str,
     id_col: str,
-):
+) -> tuple[float, pd.Series]:
+    """Calculates MAE Metric
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        df with the predicted column
+    pred_col : str
+        name of column where predicted value is stored
+    actual_col : str
+        name of column where original value is stored
+    id_col : str
+        name of column where id is stored
+
+    Returns
+    -------
+    tuple[float, pd.Series]
+       average MAE for different ids, MAE per id
+    """
+
     df_mae = df.copy()
     df_mae["error"] = np.abs(df_mae[actual_col] - df_mae[pred_col])
 
     mae_per_id = df_mae.groupby(id_col)["error"].mean().rename("MAE")
 
-    MAE_score = mae_per_id.mean()
+    average_mae = mae_per_id.mean()
 
-    return MAE_score, mae_per_id
+    return average_mae, mae_per_id
 
 
 def calculate_RMSE(
@@ -53,17 +91,35 @@ def calculate_RMSE(
     pred_col: str,
     actual_col: str,
     id_col: str,
-):
+) -> tuple[float, pd.Series]:
+    """Calculates RMSE Metric
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        df with the predicted column
+    pred_col : str
+        name of column where predicted value is stored
+    actual_col : str
+        name of column where original value is stored
+    id_col : str
+        name of column where id is stored
+
+    Returns
+    -------
+    tuple[float, pd.Series]
+       average RMSE for different ids, RMSE per id
+    """
     df_RMSE = df.copy()
     df_RMSE["error"] = np.power((df_RMSE[actual_col] - df_RMSE[pred_col]), 2)
 
-    global_rmse = np.sqrt(df_RMSE["error"].mean())
+    rmse_per_id = (
+        df_RMSE.groupby(id_col)["error"].mean().rename("RMSE").pipe(np.sqrt)
+    )
 
-    rmse_per_id = df_RMSE.groupby(id_col)["error"].mean().rename("RMSE").pipe(np.sqrt)
+    average_rmse = rmse_per_id.mean()
 
-    mean_rmse_score_per_id = rmse_per_id.mean()
-
-    return mean_rmse_score_per_id, global_rmse, rmse_per_id
+    return average_rmse, rmse_per_id  # type: ignore
 
 
 def calculate_sMAPE(
@@ -71,7 +127,26 @@ def calculate_sMAPE(
     pred_col: str,
     actual_col: str,
     id_col: str,
-):
+) -> tuple[float, pd.Series]:
+    """Calculates sMAPE metric
+
+    Calculates sMAPE by id and average between customers
+    Parameters
+    ----------
+    df : pd.DataFrame
+        df with the predicted column
+    pred_col : str
+        name of column where predicted value is stored
+    actual_col : str
+        name of column where original value is stored
+    id_col : str
+        name of column where id is stored
+
+    Returns
+    -------
+    tuple[float, pd.Series]
+        average sMAPE for different ids, sMAPE per id
+    """
     df_smape = df.copy()
 
     denom = (np.abs(df_smape[actual_col]) + np.abs(df_smape[pred_col])) / 2
@@ -84,6 +159,6 @@ def calculate_sMAPE(
 
     smape_per_id = df_smape.groupby(id_col)["error"].mean().rename("sMAPE")
 
-    global_smape = smape_per_id.mean()
+    average_smape = smape_per_id.mean()
 
-    return global_smape, smape_per_id
+    return average_smape, smape_per_id
