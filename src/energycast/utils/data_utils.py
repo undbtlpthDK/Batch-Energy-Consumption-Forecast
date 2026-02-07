@@ -3,7 +3,10 @@ from typing import List
 
 import pandas as pd
 
-ROOT_DIR = Path.cwd()
+ROOT_DIR = Path(__file__).resolve().parents[3]
+
+
+ORIGINAL_LV_DATA_DIR = ROOT_DIR / "original" / "lv_smart_meters"
 RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
 PROCESSED_DATA_DIR = ROOT_DIR / "data" / "processed"
 
@@ -38,29 +41,95 @@ def downcast_float_in_df(
     return df
 
 
-def load_raw_parquet(df_name: str) -> pd.DataFrame:
-    """Converts raw data parquet file to DataFrame
+def load_parquet(dir: str, df_name: str) -> pd.DataFrame:
+    """Loads parquet as DataFrame
 
     Parameters
     ----------
+    dir : {"original", "raw", "processed"}
+        - original - original lv smart meters data
+        - raw - raw data from loaded from db storage
+        - processed - data with some preprocessing already applied
     df_name : str
-        Name of raw parquet file
+       name of parquet file, there should be no .parquet in it
 
     Returns
     -------
     pd.DataFrame
-        Parquet file as pandas DataFrame
+        requested dataframe
+    Raises
+    ------
+    ValueError
+        if dir is not one of the existing
+    FileNotFoundError
+        if requested file doesn't exist
     """
-    print(RAW_DATA_DIR / f"{df_name}.parquet")
-    df = pd.read_parquet(RAW_DATA_DIR / f"{df_name}.parquet")
-    return df
+    dir = dir.lower()
+
+    data_dirs = {
+        "raw": RAW_DATA_DIR,
+        "original": ORIGINAL_LV_DATA_DIR,
+        "processed": PROCESSED_DATA_DIR,
+    }
+
+    if dir not in data_dirs:
+        raise ValueError(
+            f"Invalid dir '{dir}'. Expected one of: {list(data_dirs.keys())}"
+        )
+
+    file_path: Path = data_dirs[dir] / f"{df_name}.parquet"
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Parquet file '{file_path}' does not exist")
+
+    return pd.read_parquet(file_path)
 
 
-def write_processed_sm_readings(df: pd.DataFrame, name: str) -> Path:
+def write_parquet(df: pd.DataFrame, dir: str, name: str) -> Path:
+    """Saves DataFrame under specified name in the provided directory
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        data to save
+    dir : {"original", "raw", "processed"}
+        directory where to save parquet
+        - original - original lv smart meters data
+        - raw - raw data from loaded from db storage
+        - processed - data with some preprocessing already applied
+    name : str
+        save as name provided
+
+    Returns
+    -------
+    Path
+        path to the saved file
+
+    Raises
+    ------
+    ValueError
+        if dir is not one of the existing
+    ValueError
+        if dataframe is not one of the existing
     """
-    Write smart meter readings to raw parquet.
-    """
-    output_path = PROCESSED_DATA_DIR / f"{name}.parquet"
+    dir = dir.lower()
+
+    base_dirs = {
+        "raw": RAW_DATA_DIR,
+        "original": ORIGINAL_LV_DATA_DIR,
+        "processed": PROCESSED_DATA_DIR,
+    }
+
+    if dir not in base_dirs:
+        raise ValueError(
+            f"Invalid dir '{dir}'. Expected one of: {list(base_dirs.keys())}"
+        )
+
+    if df.empty:
+        raise ValueError("DataFrame is empty, nothing to write")
+
+    output_path: Path = base_dirs[dir] / f"{name}.parquet"
+
     df.to_parquet(output_path, index=False)
 
     return output_path
