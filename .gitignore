@@ -1,62 +1,69 @@
-# Python basics
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# Venvs
+# Virtual envs
 .venv/
 
-# Expermentations
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pylint.d/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Experiments & notebooks
 .ipynb_checkpoints/
 experiments/
 imgs/
-test.py
 test*.ipynb
-test_ingestioon.ipynb
-test_pool.ipynb
 example*.ipynb
 
-# OS
+# OS / IDE
 .vscode/
 
-# Data
-/data/raw/*
-/data/processed/*
-/data/external/*
-/data/original/*
+# Data (DVC-managed)
+data/raw/*
+data/processed/*
+data/external/*
+data/original/*
+!data/**/*.dvc
+!dvc.yaml
 
-#Internal Documentation
+# Internal docs
 docs_internal/
 
-# Allows DVC Tracking
-!/data/**/*.dvc
-!/dvc.yaml
-
-#MLflow
+# MLflow
 mlruns/
 mlartifacts/
 
-#Secrets & credentials
+# Secrets
 .env
 .env.*
 *.key
 *.pem
 
-#Docker runtime
+# Docker runtime
 docker-volumes/
 postgres-data/
 
-#Logs
+# Logs & temp
 *.log
 logs/
 tmp/
 
+# Python packaging
+build/
+dist/
+*.egg-info/
 
-#Some files
-.gitignore
+# Misc
 .cache.sqlite
 *.ckpt
-
-
 artifacts/
