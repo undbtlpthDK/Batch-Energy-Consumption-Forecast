@@ -4,8 +4,8 @@ import lightgbm as lgb
 import mlflow
 import pandas as pd
 
+import energycast.utils.model_artifacts as model_artifacts
 import src.energycast.evaluation.metrics as metrics
-import src.energycast.models.artifacts as artifacts
 
 ROOT = Path.cwd()
 PROCESSED = ROOT / "data" / "processed"
@@ -209,13 +209,13 @@ def main():
 
         mlflow.log_metrics(results)
 
-        run_dir = artifacts.make_run_dir(
+        run_dir = model_artifacts.make_run_dir(
             artifacts_root=ARTIFACTS,
             category="model",
             model_name="lgbm_per_customer",
         )
 
-        artifacts.save_run_artifacts(
+        model_artifacts.save_run_artifacts(
             run_dir=run_dir,
             metrics=results,
             per_customer_df=per_customer,

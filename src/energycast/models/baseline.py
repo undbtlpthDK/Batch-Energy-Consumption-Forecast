@@ -3,8 +3,8 @@ from pathlib import Path
 import mlflow
 import pandas as pd
 
+from energycast.utils import model_artifacts
 from src.energycast.evaluation import metrics
-from src.energycast.models import artifacts
 
 ROOT = Path.cwd()
 ARTIFACTS = ROOT / "artifacts"
@@ -156,13 +156,13 @@ def main():
 
         mlflow.log_metrics(results)
 
-        run_dir = artifacts.make_run_dir(  # type: ignore
+        run_dir = model_artifacts.make_run_dir(  # type: ignore
             artifacts_root=ARTIFACTS,
             category="baseline",
             model_name="seasonal_naive",
         )
 
-        artifacts.save_run_artifacts(  # type: ignore
+        model_artifacts.save_run_artifacts(  # type: ignore
             run_dir=run_dir,
             metrics=results,
             per_customer_df=per_customer,
