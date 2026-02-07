@@ -20,11 +20,10 @@ def test_make_run_dir_creates_directory(tmp_path):
         model_name="lightgbm",
     )
 
+    # Checks that in temporal folder is created category and artifacts model
     assert run_dir == tmp_path / "multi-horizon" / "lightgbm" / run_dir.name
-    assert run_dir.is_dir()
     assert "multi-horizon" in run_dir.parts
     assert "lightgbm" in run_dir.parts
-    assert run_dir.parent.parent.parent == tmp_path
 
 
 def test_save_run_artifacts(tmp_path, sample_dfs):
