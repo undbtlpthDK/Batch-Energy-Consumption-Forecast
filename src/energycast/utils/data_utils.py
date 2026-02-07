@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List
 
+import numpy as np
 import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -15,8 +16,12 @@ def downcast_float_in_df(
     df: pd.DataFrame, columns_to_exclude: List[str]
 ) -> pd.DataFrame:
     """
-    Downcast float64 columns to float32 to reduce memory usage.
+    Downcast float columns to reduce memory usage.
 
+    Logic:
+     - float64 -> float16 if will fit the range of  values
+    else:
+     - float64 -> float32
     Parameters
     ----------
     df : pd.DataFrame
@@ -31,12 +36,28 @@ def downcast_float_in_df(
     """
     df = df.copy()
 
+    float16_min = np.finfo(np.float16).min
+    float16_max = np.finfo(np.float16).max
+
     for col in df.columns:
         if col in columns_to_exclude:
             continue
 
-        if df[col].dtype == "float64":
-            df[col] = df[col].astype("float32")
+        if not pd.api.types.is_float_dtype(df[col]):
+            continue
+
+        col_min = df[col].min()
+        col_max = df[col].max()
+
+        # Skip NaN-only columns
+        if pd.isna(col_min) or pd.isna(col_max):
+            continue
+
+        # Prefer float16 if safe
+        if float16_min <= col_min <= col_max <= float16_max:
+            df[col] = df[col].astype(np.float16)
+        else:
+            df[col] = df[col].astype(np.float32)
 
     return df
 
@@ -72,6 +93,7 @@ def load_parquet(dir: str, df_name: str) -> pd.DataFrame:
         "processed": PROCESSED_DATA_DIR,
     }
 
+    # If not one of the allowed directories
     if dir not in data_dirs:
         raise ValueError(
             f"Invalid dir '{dir}'. Expected one of: {list(data_dirs.keys())}"
