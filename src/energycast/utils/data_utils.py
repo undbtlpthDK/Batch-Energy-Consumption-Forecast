@@ -298,7 +298,7 @@ def prepare_splits(df: pd.DataFrame, splits: dict) -> List[pd.DataFrame]:
 
 
 def save_splits(splits: List[pd.DataFrame], name) -> List[Path]:
-    """Saves splits into processed directory under the "name" folder
+    """Saves splits into processed directory with specified prefix
 
     Parameters
     ----------
@@ -306,7 +306,7 @@ def save_splits(splits: List[pd.DataFrame], name) -> List[Path]:
         list of splits
         should be ["train", "test"] or ["train", "dev", "test"]
     name : _type_
-        name for splits folder
+        prefix for data splits
 
     Returns
     -------
