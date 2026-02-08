@@ -2,7 +2,10 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from weather_utils import fetch_and_save_weather_for_regions
+
+from energycast.ingestion.weather_utils import (
+    fetch_and_save_weather_for_regions,
+)
 
 ROOT_DIR = Path.cwd()
 ORIGINAL_SM_DIR = ROOT_DIR / "data" / "original" / "lv_smart_meters"
@@ -86,7 +89,7 @@ def check_duplicates(df, pk: str):
         {len(dup_stats['timestamp'])} , amount of rows  \
         affected:{sum(dup_stats['count'])}"
     )
-    return len(dup_stats['timestamp'])
+    return len(dup_stats["timestamp"])
 
 
 def handle_duplicates(df, dataset_type: str):
@@ -107,42 +110,36 @@ def handle_duplicates(df, dataset_type: str):
     """
 
     if dataset_type == "smart_meter":
-        mask_sum_window = (
-            (df["timestamp"].dt.month == 10)
-            & (df["timestamp"].dt.day.between(25, 30))
+        mask_sum_window = (df["timestamp"].dt.month == 10) & (
+            df["timestamp"].dt.day.between(25, 30)
         )
 
         df_sum = df[mask_sum_window]
         df_rest = df[~mask_sum_window]
 
-        df_sum_canonical = (
-            df_sum
-            .groupby(["customer_id", "timestamp"], as_index=False)
-            .agg(
-                {
-                    "energy_import_kwh": "sum",
-                    "energy_export_kwh": "sum",
-                    **{
-                        col: "first"
-                        for col in df_sum.columns
-                        if col not in {
-                            "customer_id",
-                            "timestamp",
-                            "energy_import_kwh",
-                            "energy_export_kwh",
-                        }
-                    },
-                }
-            )
+        df_sum_canonical = df_sum.groupby(
+            ["customer_id", "timestamp"], as_index=False
+        ).agg(
+            {
+                "energy_import_kwh": "sum",
+                "energy_export_kwh": "sum",
+                **{
+                    col: "first"
+                    for col in df_sum.columns
+                    if col
+                    not in {
+                        "customer_id",
+                        "timestamp",
+                        "energy_import_kwh",
+                        "energy_export_kwh",
+                    }
+                },
+            }
         )
 
-        df_rest_canonical = (
-            df_rest
-            .sort_values("timestamp")
-            .drop_duplicates(
-                subset=["customer_id", "timestamp"],
-                keep="first",
-            )
+        df_rest_canonical = df_rest.sort_values("timestamp").drop_duplicates(
+            subset=["customer_id", "timestamp"],
+            keep="first",
         )
 
         canonical_df = pd.concat(
@@ -151,13 +148,9 @@ def handle_duplicates(df, dataset_type: str):
         ).sort_values(["customer_id", "timestamp"])
 
     elif dataset_type == "weather":
-        canonical_df = (
-            df
-            .sort_values("timestamp")
-            .drop_duplicates(
-                subset=["region_id", "timestamp"],
-                keep="first",
-            )
+        canonical_df = df.sort_values("timestamp").drop_duplicates(
+            subset=["region_id", "timestamp"],
+            keep="first",
         )
 
     else:
@@ -279,4 +272,5 @@ def timestamp_to_datetime(df: pd.DataFrame) -> pd.DataFrame:
     if df["timestamp"].dt.tz is not None:
         df["timestamp"] = df["timestamp"].dt.tz_localize(None)
 
+    return df
     return df
