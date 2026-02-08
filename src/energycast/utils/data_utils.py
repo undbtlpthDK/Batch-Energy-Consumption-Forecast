@@ -297,6 +297,50 @@ def prepare_splits(df: pd.DataFrame, splits: dict) -> List[pd.DataFrame]:
     return [train, test]
 
 
+def save_splits(splits: List[pd.DataFrame], name) -> List[Path]:
+    """Saves splits into processed directory under the "name" folder
+
+    Parameters
+    ----------
+    splits : List[pd.DataFrame]
+        list of splits
+        should be ["train", "test"] or ["train", "dev", "test"]
+    name : _type_
+        name for splits folder
+
+    Returns
+    -------
+    List[Path]
+       list of paths where splits are saved
+
+    Raises
+    ------
+    ValueError
+       raised if splits provided doesn't follow structure
+    """
+    if len(splits) == 2:
+        split_names = ["train", "test"]
+    elif len(splits) == 3:
+        split_names = ["train", "dev", "test"]
+    else:
+        raise ValueError(
+            "Expected splits to foollow format: \
+            [train, test] or [train, dev, test]"
+        )
+
+    output_paths: List[Path] = []
+
+    for df, split_name in zip(splits, split_names):
+        path = write_parquet(
+            df=df,
+            dir="processed",
+            name=f"{name}_{split_name}",
+        )
+        output_paths.append(path)
+
+    return output_paths
+
+
 def visualize_splits(splits: dict) -> None:
     plt.figure(figsize=(12, 2.5))
 
