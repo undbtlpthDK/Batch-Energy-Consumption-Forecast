@@ -8,62 +8,7 @@ ROOT_DIR = Path.cwd()
 PROCESSED_DATA_DIR = ROOT_DIR / "data" / "processed"
 
 
-# move to utils, drop nan rows
-
-
-def drop_warmup_rows(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Removes the first n rows of each entity.
-
-    That function is needed to remove all the rows affected by
-    rolling and log values calculation because in the first
-    iteration on entity they create missing values.
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame to remove from
-    window : int
-        Variable that specify the amount of first rows to remove
-        Should have same length as the longest horizon of lag
-        or roll features.
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame without rows that was affected by rolling and
-        lag values calculation.
-    """
-    df_drop = (
-        df.groupby("object_id").nth(slice(n, None)).reset_index(drop=True)
-    )
-    return df_drop  # type: ignore
-
-
-def validate_no_missing_after_warmup(
-    df: pd.DataFrame,
-) -> None:
-    """
-    Validates that no missing values remain after warm-up removal.
-
-    This function should be called AFTER `drop_warmup_rows`.
-    It fails fast if any NaNs are present.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame after warm-up rows were removed.
-
-    Raises
-    ------
-    ValueError
-        If any missing values are detected.
-    """
-    nan_summary = df.isna().sum().loc[lambda x: x > 0]
-
-    if not nan_summary.empty:
-        raise ValueError(
-            "Missing values detected after warm-up removal:\n" f"{nan_summary}"
-        )
-
-
+# move to data_utils, drop nan rows
 # Splits
 
 
@@ -367,17 +312,18 @@ def zscore_scale_float_columns(
     Parameters
     ----------
     df : pd.DataFrame
+        input dataframe
     exclude : Tuple[str]
-        Columns to exclude from scaling (e.g. target)
+        columns to exclude from scaling (e.g. target)
     stats : Dict[str, Tuple[float, float]]
-        Optional dict {col: (mean, std)}
+        optional dict {col: (mean, std)}
 
     Returns
     -------
     df_scaled : pd.DataFrame
-        Scaled DataFrame
+        scaled DataFrame
     stats : dict {col: (mean, std)}
-        Dictionary to reapply scaling without data leakage
+        dictionary to reapply scaling without data leakage
     """
 
     df = df.copy()
@@ -401,3 +347,41 @@ def zscore_scale_float_columns(
                 df[col] = (df[col] - mean) / std
 
     return df, stats
+
+
+# Rows with nan removing
+
+
+def remove_warmup_and_validate(df: pd.DataFrame, n: int) -> pd.DataFrame:
+    """Removes raws with nan values that appear due the rolling and
+    lag value calculation
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    n : int
+        length of the greatest lag or roll horizon
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with removed
+
+    Raises
+    ------
+    ValueError
+       is raised if there some nan values left in the dataframe
+    """
+
+    df = (
+        df.groupby("object_id").nth(slice(n, None)).reset_index(drop=True)
+    )  # type: ignore
+
+    nan_summary = df.isna().sum().loc[lambda x: x > 0]
+    if not nan_summary.empty:
+        raise ValueError(
+            "Unexpected NaNs after warm-up removal:\n" f"{nan_summary}"
+        )
+
+    return df
