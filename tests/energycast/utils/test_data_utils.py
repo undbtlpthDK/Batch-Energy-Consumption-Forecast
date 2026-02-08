@@ -16,6 +16,26 @@ def base_df():
     )
 
 
+@pytest.fixture
+def sample_df():
+    return pd.DataFrame(
+        {
+            "a": [1, 2],
+            "b": [3, 4],
+        }
+    )
+
+
+@pytest.fixture
+def time_df():
+    return pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2023-01-01", periods=10, freq="h"),
+            "value": range(10),
+        }
+    )
+
+
 # Downcast test
 
 
@@ -43,16 +63,6 @@ def test_original_dataframe_not_modified(base_df):
 
 
 # Parquet loading
-
-
-@pytest.fixture
-def sample_df():
-    return pd.DataFrame(
-        {
-            "a": [1, 2],
-            "b": [3, 4],
-        }
-    )
 
 
 def test_load_parquet_invalid_dir():
@@ -101,3 +111,59 @@ def test_write_parquet_success(tmp_path, monkeypatch, sample_df):
 
     loaded = pd.read_parquet(output_path)
     pd.testing.assert_frame_equal(loaded, sample_df)
+
+
+# Splits
+
+
+def test_create_data_split_basic(time_df):
+    result = data_utils._create_data_split(
+        time_df,
+        start="2023-01-01 02:00:00",
+        end="2023-01-01 05:00:00",
+    )
+
+    assert len(result) == 3
+    assert result["timestamp"].min() >= pd.Timestamp("2023-01-01 02:00:00")
+    assert result["timestamp"].max() < pd.Timestamp("2023-01-01 05:00:00")
+
+
+def test_prepare_splits_with_dev(time_df):
+    splits = {
+        "train": (
+            pd.Timestamp("2023-01-01 00:00:00"),
+            pd.Timestamp("2023-01-01 04:00:00"),
+        ),
+        "dev": (
+            pd.Timestamp("2023-01-01 04:00:00"),
+            pd.Timestamp("2023-01-01 07:00:00"),
+        ),
+        "test": (
+            pd.Timestamp("2023-01-01 07:00:00"),
+            pd.Timestamp("2023-01-01 10:00:00"),
+        ),
+    }
+
+    train, dev, test = data_utils.prepare_splits(time_df, splits)
+
+    assert len(train) == 4
+    assert len(dev) == 3
+    assert len(test) == 3
+
+
+def test_prepare_splits_without_dev(time_df):
+    splits = {
+        "train": (
+            pd.Timestamp("2023-01-01 00:00:00"),
+            pd.Timestamp("2023-01-01 06:00:00"),
+        ),
+        "test": (
+            pd.Timestamp("2023-01-01 06:00:00"),
+            pd.Timestamp("2023-01-01 10:00:00"),
+        ),
+    }
+
+    train, test = data_utils.prepare_splits(time_df, splits)
+
+    assert len(train) == 6
+    assert len(test) == 4
