@@ -4,6 +4,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import yaml
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 
@@ -11,6 +12,10 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 ORIGINAL_LV_DATA_DIR = ROOT_DIR / "original" / "lv_smart_meters"
 RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
 PROCESSED_DATA_DIR = ROOT_DIR / "data" / "processed"
+CONFIGS_DIR = ROOT_DIR / "configs"
+
+
+# Data downcasting
 
 
 def downcast_float_in_df(
@@ -61,6 +66,9 @@ def downcast_float_in_df(
             df[col] = df[col].astype(np.float32)
 
     return df
+
+
+# Operations with parquet file
 
 
 def load_parquet(dir: str, df_name: str) -> pd.DataFrame:
@@ -158,11 +166,84 @@ def write_parquet(df: pd.DataFrame, dir: str, name: str) -> Path:
     return output_path
 
 
-# move to data_utils, drop nan rows
 # Splits
 
 
-def create_data_split(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
+def load_splits(
+    config_name: str,
+) -> tuple[dict[str, tuple[pd.Timestamp, pd.Timestamp]], str]:
+    """Loads splits from the configuration splits directory
+
+    Parameters
+    ----------
+    name : str
+        name of the file, withou .yaml
+
+    Returns
+    -------
+    dict[str, tuple[pd.Timestamp, pd.Timestamp]]
+        returns dictionary with the beginning and end
+        of the each split from configuration
+
+    Raises
+    ------
+    FileNotFoundError
+        raised if file not found
+    ValueError
+        if splits isn't top key
+    ValueError
+        if train or test split is missing
+    ValueError
+        split isn't complete or is wrong
+    ValueError
+        if splits intersects
+    """
+    splits_path = CONFIGS_DIR / "splits" / f"{config_name}.yaml"
+
+    if not splits_path.exists():
+        raise FileNotFoundError(f"Splits config not found: {splits_path}")
+
+    with open(splits_path) as f:
+        cfg = yaml.safe_load(f)
+
+    if "splits" not in cfg:
+        raise ValueError("Config must contain top-level 'splits' key")
+
+    raw_splits = cfg["splits"]
+
+    required = {"train", "test"}
+    missing = required - raw_splits.keys()
+    if missing:
+        raise ValueError(f"Missing required splits: {missing}")
+
+    splits: dict[str, tuple[pd.Timestamp, pd.Timestamp]] = {}
+    for name, bounds in raw_splits.items():
+        try:
+            start = pd.Timestamp(bounds["start"])
+            end = pd.Timestamp(bounds["end"])
+        except KeyError as e:
+            raise ValueError(f"Split '{name}' must have start and end") from e
+
+        if start >= end:
+            raise ValueError(f"Split '{name}' start must be < end")
+
+        splits[name] = (start, end)
+
+    ordered = ["train", "dev", "test"]
+    for prev, curr in zip(ordered, ordered[1:]):
+        prev_end = splits[prev][1]
+        curr_start = splits[curr][0]
+
+        if curr_start < prev_end:
+            raise ValueError(
+                f"Splits '{prev}' and '{curr}' intersect "
+                f"({prev_end} > {curr_start})"
+            )
+
+    return splits, config_name
+
+
+def _create_data_split(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
     """Split the DataFrame from start to the end date, end date not included.
 
     Required date format "YYYY-MM-DD HH:MM:SS"
@@ -184,21 +265,36 @@ def create_data_split(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
     return df_split
 
 
-def load_splits() -> dict:
-    start = pd.Timestamp("2017-04-01 01:00:00")
-    roll_and_lag_end = start + pd.DateOffset(days=7)
-    train_end = roll_and_lag_end + pd.DateOffset(days=637)
-    dev_end = train_end + pd.DateOffset(days=91)
-    test_end = dev_end + pd.DateOffset(days=357)
-    end = pd.Timestamp("2020-04-01 00:00:00")
-    splits = {
-        "Rolling offset": [start, roll_and_lag_end],
-        "Train set": [roll_and_lag_end, train_end],
-        "Dev set": [train_end, dev_end],
-        "Test set": [dev_end, test_end],
-        "Left": [test_end, end],
-    }
-    return splits
+def prepare_splits(df: pd.DataFrame, splits: dict) -> List[pd.DataFrame]:
+    """_summary_
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        _description_
+    splits : dict
+        _description_
+
+    Returns
+    -------
+    List[pd.DataFrame]
+       train dev test split
+    """
+
+    train = _create_data_split(
+        df, start=splits["train"][0], end=splits["train"][1]
+    )
+    test = _create_data_split(
+        df, start=splits["test"][0], end=splits["test"][1]
+    )
+
+    if "dev" in splits.keys():
+        dev = _create_data_split(
+            df, start=splits["dev"][0], end=splits["dev"][1]
+        )
+        return [train, dev, test]
+
+    return [train, test]
 
 
 def visualize_splits(splits: dict) -> None:
@@ -357,27 +453,3 @@ def energy_import_export_split(df: pd.DataFrame):
     )
 
     return df_import, df_export
-
-
-def prepare_splits(df: pd.DataFrame, splits: dict, model_type: str):
-
-    if model_type == "naive" or model_type == "ARIMA":
-        df_to_split = df[["object_id", "timestamp", "energy_kwh"]].copy()
-    elif model_type == "LightGBM" or model_type == "PR":
-        df_to_split = df.drop(
-            columns=["month", "hour", "week", "weather_code", "region_id"]
-        )
-    else:
-        raise ValueError
-
-    train = create_data_split(
-        df_to_split, start=splits["Train set"][0], end=splits["Train set"][1]
-    )
-    dev = create_data_split(
-        df_to_split, start=splits["Dev set"][0], end=splits["Dev set"][1]
-    )
-    test = create_data_split(
-        df_to_split, start=splits["Test set"][0], end=splits["Test set"][1]
-    )
-
-    return [train, dev, test]
