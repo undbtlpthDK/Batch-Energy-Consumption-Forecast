@@ -1,11 +1,14 @@
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
 ROOT_DIR = Path.cwd()
 PROCESSED_DATA_DIR = ROOT_DIR / "data" / "processed"
+
+
+# move to utils, drop nan rows
 
 
 def drop_warmup_rows(df: pd.DataFrame, n: int) -> pd.DataFrame:
@@ -29,9 +32,7 @@ def drop_warmup_rows(df: pd.DataFrame, n: int) -> pd.DataFrame:
         lag values calculation.
     """
     df_drop = (
-        df.groupby("object_id")
-        .nth(slice(n, None))
-        .reset_index(drop=True)
+        df.groupby("object_id").nth(slice(n, None)).reset_index(drop=True)
     )
     return df_drop  # type: ignore
 
@@ -55,17 +56,15 @@ def validate_no_missing_after_warmup(
     ValueError
         If any missing values are detected.
     """
-    nan_summary = (
-        df.isna()
-        .sum()
-        .loc[lambda x: x > 0]
-    )
+    nan_summary = df.isna().sum().loc[lambda x: x > 0]
 
     if not nan_summary.empty:
         raise ValueError(
-            "Missing values detected after warm-up removal:\n"
-            f"{nan_summary}"
+            "Missing values detected after warm-up removal:\n" f"{nan_summary}"
         )
+
+
+# Splits
 
 
 def create_data_split(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
@@ -86,53 +85,8 @@ def create_data_split(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
     pd.DataFrame
         DataFrame split
     """
-    df_split = df.loc[
-        (df["timestamp"] >= start)
-        & (df["timestamp"] < end)
-    ]
+    df_split = df.loc[(df["timestamp"] >= start) & (df["timestamp"] < end)]
     return df_split
-
-
-def load_processed_parquet(df_name: str) -> pd.DataFrame:
-    df = pd.read_parquet(PROCESSED_DATA_DIR / f"{df_name}.parquet")
-    return df
-
-
-def write_normalized_parquet(df: pd.DataFrame, df_name: str):
-    output_path = PROCESSED_DATA_DIR / f"{df_name}.parquet"
-    df.to_parquet(output_path, index=False)
-    return output_path
-
-
-def downcast_float_in_df(
-    df: pd.DataFrame,
-    columns_to_exclude: List[str]
-) -> pd.DataFrame:
-    """
-    Downcast float64 columns to float32 to reduce memory usage.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe.
-    columns_to_exclude : List[str]
-        Columns that must not be reduced (e.g. timestamps, ids, targets).
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with float64 columns converted to float32 where applicable.
-    """
-    df = df.copy()
-
-    for col in df.columns:
-        if col in columns_to_exclude:
-            continue
-
-        if df[col].dtype == "float64":
-            df[col] = df[col].astype("float32")
-
-    return df
 
 
 def load_splits() -> dict:
@@ -202,8 +156,10 @@ def visualize_splits(splits: dict) -> None:
 
     plt.yticks([])
     plt.xlabel("Time")
-    plt.title("Time-based Split: Rolling / Train / Dev / Test for \
-              168 Hours long multi-horizon forecast")
+    plt.title(
+        "Time-based Split: Rolling / Train / Dev / Test for \
+              168 Hours long multi-horizon forecast"
+    )
     plt.legend(loc="upper center", ncol=5, frameon=False)
     plt.tight_layout()
     plt.show()
@@ -311,37 +267,89 @@ def energy_import_export_split(df: pd.DataFrame):
 def prepare_splits(df: pd.DataFrame, splits: dict, model_type: str):
 
     if model_type == "naive" or model_type == "ARIMA":
-        df_to_split = df[['object_id', 'timestamp', 'energy_kwh']].copy()
+        df_to_split = df[["object_id", "timestamp", "energy_kwh"]].copy()
     elif model_type == "LightGBM" or model_type == "PR":
-        df_to_split = df.drop(columns=[
-            'month', "hour", "week", "weather_code", "region_id"]
+        df_to_split = df.drop(
+            columns=["month", "hour", "week", "weather_code", "region_id"]
         )
     else:
         raise ValueError
 
     train = create_data_split(
-        df_to_split,
-        start=splits['Train set'][0],
-        end=splits['Train set'][1]
-        )
+        df_to_split, start=splits["Train set"][0], end=splits["Train set"][1]
+    )
     dev = create_data_split(
-        df_to_split,
-        start=splits['Dev set'][0],
-        end=splits['Dev set'][1]
+        df_to_split, start=splits["Dev set"][0], end=splits["Dev set"][1]
     )
     test = create_data_split(
-        df_to_split,
-        start=splits['Test set'][0],
-        end=splits['Test set'][1]
+        df_to_split, start=splits["Test set"][0], end=splits["Test set"][1]
     )
 
     return [train, dev, test]
 
 
+# Normalization
+
+
 def normalize_bool_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Converts boolean column values to int
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with normalized columns
+    """
     bool_cols = df.select_dtypes(include="bool").columns
     df[bool_cols] = df[bool_cols].astype("int8")
     return df
+
+
+def normalize_categorical_columns(
+    df: pd.DataFrame,
+    categorical_cols: list[str],
+) -> pd.DataFrame:
+    """One-hot encodes selected categorical columns without dropping originals.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    categorical_cols : list[str]
+        columns to one-hot encode
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with added one-hot encoded columns
+
+    Raises
+    ------
+    KeyError
+        raised if provided column isn't preset id dataframe
+    """
+    df_out = df.copy()
+
+    for col in categorical_cols:
+        if col not in df_out.columns:
+            raise KeyError(f"Column '{col}' not found in DataFrame")
+
+        dummies = pd.get_dummies(
+            df_out[col],
+            prefix=col,
+            dtype="int8",
+        )
+
+        df_out = pd.concat([df_out, dummies], axis=1)
+
+    return df_out
+
+
+# Scaling
 
 
 def zscore_scale_float_columns(
@@ -374,10 +382,8 @@ def zscore_scale_float_columns(
 
     df = df.copy()
 
-    float_cols = (
-        df.select_dtypes(include="float")
-        .columns
-        .difference(exclude)  # type: ignore
+    float_cols = df.select_dtypes(include="float").columns.difference(
+        exclude  # type: ignore
     )
 
     if stats is None:
@@ -395,19 +401,3 @@ def zscore_scale_float_columns(
                 df[col] = (df[col] - mean) / std
 
     return df, stats
-
-
-def prepare_multi_horizon_dataset(
-    dataset_name: str,
-    horizon: int,
-    data_type: str
-) -> pd.DataFrame:
-    df = load_processed_parquet(dataset_name)
-    df = downcast_float_in_df(df, [])
-    df = drop_warmup_rows(df, n=horizon)
-    df = normalize_bool_columns(df)
-    validate_no_missing_after_warmup(df)
-
-    if data_type == "import":
-        df_import, _ = energy_import_export_split(df)
-    return df_import
