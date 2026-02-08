@@ -1,5 +1,0 @@
-outs:
-- md5: 1fb6fbf871367c78b23e5a60bafcb4f4
-  size: 1684541302
-  hash: md5
-  path: smart_meter_readings.parquet

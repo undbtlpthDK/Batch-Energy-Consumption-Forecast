@@ -1,5 +1,0 @@
-outs:
-- md5: 825cc67a261f6d55fed13fd97a9230b8
-  size: 95351253
-  hash: md5
-  path: multi_horizon_reading_h24.parquet
