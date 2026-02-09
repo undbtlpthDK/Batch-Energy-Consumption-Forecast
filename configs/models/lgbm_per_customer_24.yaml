@@ -1,0 +1,109 @@
+model:
+  type: lgbm
+  strategy: per_customer
+  horizon: 24
+
+data:
+  train_path: data/processed/default_24_train.parquet
+  dev_path: data/processed/default_24_dev.parquet
+  test_path: data/processed/default_24_test.parquet
+  id_col: object_id
+  time_col: timestamp
+
+target:
+  col: energy_kwh   
+  horizon: 24
+
+features:
+  list:
+    - rolling_mean_energy_kwh_24
+    - rolling_std_energy_kwh_24
+    - lagged_24_energy_kwh
+    - lagged_168_energy_kwh
+    - rolling_mean_energy_kwh_6_frozen
+    - rolling_std_energy_kwh_6_frozen
+    - rolling_mean_energy_kwh_12_frozen
+    - rolling_std_energy_kwh_12_frozen
+    - rolling_mean_energy_kwh_24_frozen
+    - rolling_std_energy_kwh_24_frozen
+    - lagged_1_energy_kwh_frozen
+    - lagged_6_energy_kwh_frozen
+    - lagged_12_energy_kwh_frozen
+    - lagged_24_energy_kwh_frozen
+    - lagged_168_energy_kwh_frozen
+    - customer_mean_energy_kwh
+    - customer_30d_mean_energy_kwh
+    - customer_90d_mean_energy_kwh
+    - day
+    - is_weekend
+    - is_holiday
+    - week
+    - week_sin
+    - week_cos
+    - month
+    - month_sin
+    - month_cos
+    - temperature_2m
+    - rain
+    - snowfall
+    - cloud_cover
+    - is_day
+    - wind_speed_10m
+    - relative_humidity_2m
+    - apparent_temperature
+    - precipitation
+    - weekday_0
+    - weekday_1
+    - weekday_2
+    - weekday_3
+    - weekday_4
+    - weekday_5
+    - weekday_6
+    - hour_0
+    - hour_1
+    - hour_2
+    - hour_3
+    - hour_4
+    - hour_5
+    - hour_6
+    - hour_7
+    - hour_8
+    - hour_9
+    - hour_10
+    - hour_11
+    - hour_12
+    - hour_13
+    - hour_14
+    - hour_15
+    - hour_16
+    - hour_17
+    - hour_18
+    - hour_19
+    - hour_20
+    - hour_21
+    - hour_22
+    - hour_23
+
+
+lgbm_params:
+  objective: regression
+  boosting_type: gdbt
+  metric: mae
+  learning_rate: 0.06
+  num_leaves: 8
+  max_depth: 10
+  min_data_in_leaf: 100
+  n_estimators: 100
+  lambda_l1: 0.5
+  lambda_l2: 0.5
+  random_state: 42
+
+evaluation:
+  protocol: fixed_train_dev_test
+  metrics: [mae, rmse, smape]
+
+tracking:
+  mlflow_experiment: EnergyCast-Per-Customer-Models
+  mlflow_run_name: lgbm_per_customer_h24
+  artifact_category: model
+  artifact_name: lgbm_per_customer
