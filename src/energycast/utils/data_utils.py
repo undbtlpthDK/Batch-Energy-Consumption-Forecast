@@ -71,7 +71,9 @@ def downcast_float_in_df(
 # Operations with parquet file
 
 
-def load_parquet(dir: str, df_name: str) -> pd.DataFrame:
+def load_parquet(
+    dir: str, df_name: str, category: str | None = None
+) -> pd.DataFrame:
     """Loads parquet as DataFrame
 
     Parameters
@@ -108,7 +110,10 @@ def load_parquet(dir: str, df_name: str) -> pd.DataFrame:
             f"Invalid dir '{dir}'. Expected one of: {list(data_dirs.keys())}"
         )
 
-    file_path: Path = data_dirs[dir] / f"{df_name}.parquet"
+    if category:
+        file_path: Path = data_dirs[dir] / category / f"{df_name}.parquet"
+    else:
+        file_path: Path = data_dirs[dir] / f"{df_name}.parquet"
 
     if not file_path.exists():
         raise FileNotFoundError(f"Parquet file '{file_path}' does not exist")
