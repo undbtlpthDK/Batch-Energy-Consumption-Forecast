@@ -1,23 +1,6 @@
-from pathlib import Path
-
-import mlflow
 import pandas as pd
 
-from energycast.utils import model_artifacts
-from src.energycast.evaluation import metrics
-
-ROOT = Path.cwd()
-ARTIFACTS = ROOT / "artifacts"
-PROCESSED = ROOT / "data" / "processed"
-
-config = {
-    "model_type": "baseline",
-    "baseline_type": "seasonal_naive",
-    "season": 168,
-    "horizon": 168,
-    "target_col": "energy_kwh",
-    "evaluation_protocol": "rolling_origin_shift",
-}
+from energycast.evaluation import metrics
 
 
 def seasonal_naive_forecast(
@@ -27,7 +10,7 @@ def seasonal_naive_forecast(
     target_col: str,
     time_col: str = "timestamp",
     group_col: str = "object_id",
-    season: int = 168,
+    season: int = 24,
 ) -> pd.DataFrame:
     """Simple Naive Baseline implementation based on pandas shift.
     Default value for season is 1 week, as it's main scope  of
@@ -77,7 +60,7 @@ def run_seasonal_naive_baseline(
     target_col: str,
     time_col: str = "timestamp",
     group_col: str = "object_id",
-    season: int = 168,
+    season: int = 24,
 ):
     """_summary_
 
@@ -94,7 +77,7 @@ def run_seasonal_naive_baseline(
     group_col : str, optional
         identifier column name, by default "object_id"
     season : int, optional
-        season horizon length, by default 168
+        season horizon length, by default 24
 
     Returns
     -------
@@ -122,56 +105,3 @@ def run_seasonal_naive_baseline(
     )
 
     return results, per_customer_metrics, df_forecast
-
-
-def main():
-    df_train_name = "stats_models_168_train.parquet"
-    df_dev_name = "stats_models_168_dev.parquet"
-    df_train = pd.read_parquet(PROCESSED / "stats_models_168_train.parquet")
-    df_dev = pd.read_parquet(PROCESSED / "stats_models_168_dev.parquet")
-
-    data_tracking = {
-        "train_data": str(PROCESSED / df_train_name),
-        "train_dvc": str(PROCESSED / f"{df_train_name}.dvc"),
-        "dev_data": str(PROCESSED / df_dev_name),
-        "dev_dvc": str(PROCESSED / f"{df_dev_name}.dvc"),
-    }
-
-    with mlflow.start_run(run_name="seasonal_naive"):
-        mlflow.set_experiment("EnergyCast-Baselines")
-
-        mlflow.log_params(
-            {
-                "train_data": data_tracking["train_data"],
-                "dev_data": data_tracking["dev_data"],
-            }
-        )
-        config["data_tracking"] = data_tracking
-
-        results, per_customer, forecasts = run_seasonal_naive_baseline(
-            df_train,
-            df_dev,
-            target_col="energy_kwh",
-        )
-
-        mlflow.log_metrics(results)
-
-        run_dir = model_artifacts.make_run_dir(  # type: ignore
-            artifacts_root=ARTIFACTS,
-            category="baseline",
-            model_name="seasonal_naive",
-        )
-
-        model_artifacts.save_run_artifacts(  # type: ignore
-            run_dir=run_dir,
-            metrics=results,
-            per_customer_df=per_customer,
-            forecasts_df=forecasts,
-            config=config,
-        )
-
-        mlflow.log_artifacts(str(run_dir))
-
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,29 @@
+model:
+  type: baseline
+  method: seasonal_naive
+  strategy: per_customer
+  horizon: 24
+
+data:
+  train_set: default_24_train
+  dev_set: default_24_dev
+  test_set: default_24_test
+  id_col: object_id
+  time_col: timestamp
+
+target:
+  col: energy_kwh   
+  horizon: 24
+
+
+evaluation:
+  protocol: fixed_train_dev_test
+  metrics: [mae, rmse, smape]
+
+
+
+tracking:
+  mlflow_experiment: EnergyCast-Baseline
+  mlflow_run_name: seasonal_naive_h24
+  artifact_category: baseline
+  artifact_name: seasonal_naive_per_customer
