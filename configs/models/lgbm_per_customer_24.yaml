@@ -4,9 +4,9 @@ model:
   horizon: 24
 
 data:
-  train_path: data/processed/default_24_train.parquet
-  dev_path: data/processed/default_24_dev.parquet
-  test_path: data/processed/default_24_test.parquet
+  train_set: default_24_train
+  dev_set: default_24_dev
+  test_set: default_24_test
   id_col: object_id
   time_col: timestamp
 
@@ -87,7 +87,7 @@ features:
 
 lgbm_params:
   objective: regression
-  boosting_type: gdbt
+  boosting_type: gbdt
   metric: mae
   learning_rate: 0.06
   num_leaves: 8
