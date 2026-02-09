@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -246,7 +245,7 @@ def check_time_continuity(
 def add_ingestion_time(
     df: pd.DataFrame,
     mode: str,
-    forecast_horizon: Optional[int] = None,
+    forecast_horizon: int | None = None,
 ) -> pd.DataFrame:
 
     if mode == "smart_meter_backtest":
