@@ -20,9 +20,7 @@ coverage.xml
 
 # Experiments & notebooks
 .ipynb_checkpoints/
-experiments/
 imgs/
-test*.ipynb
 example*.ipynb
 
 # OS / IDE
