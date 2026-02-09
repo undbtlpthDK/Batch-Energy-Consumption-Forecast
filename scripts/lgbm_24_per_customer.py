@@ -32,11 +32,11 @@ def main():
             train=train,
             dev=dev,
             test=test,
-            features=conf.features,
+            features=conf.features,  # type: ignore
             target=conf.target_col,
         )
         customer_models = lgbm.train_models_per_customer(
-            customer_data, config=conf.model_params
+            customer_data, config=conf.model_params  # type: ignore
         )
         prediction = lgbm.predict_per_customer(customer_models, customer_data)
 
@@ -47,8 +47,8 @@ def main():
         mlflow.log_metrics(results)
 
         run_dir = model_artifacts.make_run_dir(
-            category=conf.artifact_category,
-            model_name=conf.artifact_name,
+            category=conf.artifact_category,  # type: ignore
+            model_name=conf.artifact_name,  # type: ignore
         )
 
         model_artifacts.save_run_artifacts(
