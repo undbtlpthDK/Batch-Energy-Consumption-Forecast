@@ -1,114 +1,37 @@
-from pathlib import Path
+from typing import List
 
 import lightgbm as lgb
-import mlflow
 import pandas as pd
 
-import energycast.utils.model_artifacts as model_artifacts
-import src.energycast.evaluation.metrics as metrics
 
-ROOT = Path.cwd()
-PROCESSED = ROOT / "data" / "processed"
-ARTIFACTS = ROOT / "artifacts"
+def per_customer_data(
+    train: pd.DataFrame,
+    dev: pd.DataFrame,
+    test: pd.DataFrame,
+    features: List[str],
+    target: str,
+):
+    """Splits data by customer
 
-config = {
-    "model_type": "lgbm",
-    "strategy": "per_customer",
-    "horizon": 24,
-    "target_col": "energy_kwh",
-    "evaluation_protocol": "fixed_train_dev_test",
-    "lgbm_params": {
-        "objective": "regression",
-        "boosting_type": "goss",
-        "metric": "mae",
-        "learning_rate": 0.06,
-        "num_leaves": 8,
-        "max_depth": 10,
-        "min_data_in_leaf": 100,
-        "n_estimators": 100,
-        "lambda_l1": 0.5,
-        "lambda_l2": 0.5,
-        "random_state": 42,
-    },
-}
+    Parameters
+    ----------
+    train : pd.DataFrame
+        train set
+    dev : pd.DataFrame
+        dev set
+    test : pd.DataFrame
+        test set
+    features : List[str]
+        feature list
+    target : str
+        target list
 
-
-# Should be moved after
-def per_customer_data():
-    train = pd.read_parquet(PROCESSED / "lgbm_multi_horizon_24_train.parquet")
-    dev = pd.read_parquet(PROCESSED / "lgbm_multi_horizon_24_dev.parquet")
-    test = pd.read_parquet(PROCESSED / "lgbm_multi_horizon_24_test.parquet")
-
-    train = pd.get_dummies(train, columns=["horizon_index"], drop_first=True)
-    dev = pd.get_dummies(dev, columns=["horizon_index"], drop_first=True)
-    test = pd.get_dummies(test, columns=["horizon_index"], drop_first=True)
-
-    bool_cols = train.select_dtypes(include="bool").columns
-    train[bool_cols] = train[bool_cols].astype("int8")
-    dev[bool_cols] = dev[bool_cols].astype("int8")
-    test[bool_cols] = test[bool_cols].astype("int8")
-
-    train["y_day_ago"] = train["energy_kwh"].shift(24)
-    train["y_week_ago"] = train["energy_kwh"].shift(168)
-    dev["y_day_ago"] = dev["energy_kwh"].shift(24)
-    dev["y_week_ago"] = dev["energy_kwh"].shift(168)
-    test["y_day_ago"] = test["energy_kwh"].shift(24)
-    test["y_week_ago"] = test["energy_kwh"].shift(168)
-    train = train.dropna()
-    dev = dev.dropna()
-    test = test.dropna()
-
-    features = [
-        "day",
-        "hour_sin",
-        "hour_cos",
-        "week_sin",
-        "week_cos",
-        "weekday",
-        "is_weekend",
-        "month_sin",
-        "month_cos",
-        "is_holiday",
-        "temperature_2m",
-        "is_day",
-        "relative_humidity_2m",
-        "apparent_temperature",
-        "precipitation",
-        "lag_24",
-        "lag_168",
-        "lag_1",
-        "rolling_mean_24",
-        "rolling_mean_168",
-        "rolling_std_168",
-        "horizon_index_1",
-        "horizon_index_2",
-        "horizon_index_3",
-        "horizon_index_4",
-        "horizon_index_5",
-        "horizon_index_6",
-        "horizon_index_7",
-        "horizon_index_8",
-        "horizon_index_9",
-        "horizon_index_10",
-        "horizon_index_11",
-        "horizon_index_12",
-        "horizon_index_13",
-        "horizon_index_14",
-        "horizon_index_15",
-        "horizon_index_16",
-        "horizon_index_17",
-        "horizon_index_18",
-        "horizon_index_19",
-        "horizon_index_20",
-        "horizon_index_21",
-        "horizon_index_22",
-        "horizon_index_23",
-        "y_day_ago",
-        "y_week_ago",
-    ]
-
-    target = ["energy_kwh"]
-
+    Returns
+    -------
+    dict
+        returns 2 layer dictionary, first key - customer_id
+        second key - data sets
+    """
     customer_data = {
         customer: {
             "X_train": train.loc[train["object_id"] == customer, features],
@@ -124,21 +47,35 @@ def per_customer_data():
     return customer_data
 
 
-def train_models_per_customer(customer_data):
+def train_models_per_customer(customer_data: dict, config: dict) -> dict:
+    """Creates dictionary that stores trained model per customer
+
+    Parameters
+    ----------
+    customer_data :
+        customer datasets dictionary
+    config : _type_
+        model parameters from configuration yaml
+
+    Returns
+    -------
+    _type_
+        dictionary of models where key is customer id
+    """
     customer_models = {}
     for customer, data in customer_data.items():
         model = lgb.LGBMRegressor(
-            objective="regression",
-            boosting_type="goss",
-            metric="mae",
-            random_state=42,
-            learning_rate=0.06,
-            num_leaves=8,
-            max_depth=10,
-            min_data_in_leaf=100,
-            n_estimators=100,
-            lambda_l1=0.5,
-            lambda_l2=0.5,
+            objective=config["objective"],
+            boosting_type=config["boosting_type"],
+            metric=config["metric"],
+            random_state=config["random_state"],
+            learning_rate=config["learning_rate"],
+            num_leaves=config["num_leaves"],
+            max_depth=config["max_depth"],
+            min_data_in_leaf=config["min_data_in_leaf"],
+            n_estimators=config["n_estimators"],
+            lambda_l1=config["lambda_l1"],
+            lambda_l2=config["lambda_l2"],
         )
         model.fit(
             data["X_train"],
@@ -151,7 +88,23 @@ def train_models_per_customer(customer_data):
     return customer_models
 
 
-def predict_per_customer(customer_models, customer_data):
+def predict_per_customer(
+    customer_models: dict, customer_data: dict
+) -> pd.DataFrame:
+    """Calculates prediction for customer test
+
+    Parameters
+    ----------
+    customer_models : dict
+        customer pretrained models
+    customer_data : dict
+        customer datasets
+
+    Returns
+    -------
+    pd.DataFrame
+        returns DataFrame with predictions and original values
+    """
     for customer, model in customer_models.items():
         customer_data[customer]["y_pred"] = model.predict(
             customer_data[customer]["X_test"]
@@ -170,62 +123,3 @@ def predict_per_customer(customer_models, customer_data):
         ]
 
     return pd.concat(prediction)
-
-
-def main():
-
-    data_tracking = {
-        "train_data": str(PROCESSED / "lgbm_multi_horizon_24_train.parquet"),
-        "train_dvc": str(
-            PROCESSED / f"{"lgbm_multi_horizon_24_train.parquet"}.dvc"
-        ),
-        "dev_data": str(PROCESSED / "lgbm_multi_horizon_24_dev.parquet"),
-        "dev_dvc": str(
-            PROCESSED / f"{"lgbm_multi_horizon_24_dev.parquet"}.dvc"
-        ),
-        "test_data": str(PROCESSED / "lgbm_multi_horizon_24_test.parquet"),
-        "test_dvc": str(
-            PROCESSED / f"{"lgbm_multi_horizon_24_test.parquet"}.dvc"
-        ),
-    }
-
-    with mlflow.start_run(run_name="LightGBM"):
-        mlflow.set_experiment("EnergyCast-Per-Customer-Models")
-
-        mlflow.log_params(
-            {
-                "train_data": data_tracking["train_data"],
-                "dev_data": data_tracking["dev_data"],
-                "test_data": data_tracking["test_data"],
-            }
-        )
-        config["data_tracking"] = data_tracking
-        customer_data = per_customer_data()
-        customer_models = train_models_per_customer(customer_data)
-        prediction = predict_per_customer(customer_models, customer_data)
-        results, per_customer = metrics.evaluate_forecasts(
-            prediction, "y_pred", "y_true", "object_id"
-        )
-
-        mlflow.log_metrics(results)
-
-        run_dir = model_artifacts.make_run_dir(
-            artifacts_root=ARTIFACTS,
-            category="model",
-            model_name="lgbm_per_customer",
-        )
-
-        model_artifacts.save_run_artifacts(
-            run_dir=run_dir,
-            metrics=results,
-            per_customer_df=per_customer,
-            forecasts_df=prediction,
-            config=config,
-        )
-
-        mlflow.log_artifacts(str(run_dir))
-        mlflow.end_run()
-
-
-if __name__ == "__main__":
-    main()
