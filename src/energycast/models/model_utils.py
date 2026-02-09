@@ -21,14 +21,14 @@ class ModelConfig:
     strategy: str
     horizon: int
     target_col: str
-    features: list[str]
-    model_params: dict
+    features: list[str] | None = None
+    model_params: dict | None = None
 
     # tracking
-    mlflow_experiment: str
-    mlflow_run_name: str
-    artifact_category: str
-    artifact_name: str
+    mlflow_experiment: str | None = None
+    mlflow_run_name: str | None = None
+    artifact_category: str | None = None
+    artifact_name: str | None = None
 
 
 def load_model_config(config_name: str) -> ModelConfig:
@@ -61,8 +61,8 @@ def load_model_config(config_name: str) -> ModelConfig:
         strategy=cfg["model"]["strategy"],
         horizon=cfg["model"]["horizon"],
         target_col=cfg["target"]["col"],
-        features=cfg["features"]["list"],
-        model_params=cfg["lgbm_params"],
+        features=cfg.get("features", {}).get("list") or [],
+        model_params=cfg.get("lgbm_params") or {},
         mlflow_experiment=cfg["tracking"]["mlflow_experiment"],
         mlflow_run_name=cfg["tracking"]["mlflow_run_name"],
         artifact_category=cfg["tracking"]["artifact_category"],
