@@ -1,13 +1,15 @@
 import json
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-import yaml
+
+ROOT = Path.cwd()
+ARTIFACTS = ROOT / "artifacts"
 
 
 def make_run_dir(
-    artifacts_root: Path,
     category: str,
     model_name: str,
 ) -> Path:
@@ -15,8 +17,6 @@ def make_run_dir(
     add datetime parameters
     Parameters
     ----------
-    artifacts_root : Path
-        artifacts directory
     category : str
         model category name
     model_name : str
@@ -28,7 +28,7 @@ def make_run_dir(
        Path to created directory
     """
     run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
-    run_dir = artifacts_root / category / model_name / run_id
+    run_dir = ARTIFACTS / category / model_name / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 
@@ -38,7 +38,6 @@ def save_run_artifacts(
     metrics: dict,
     per_customer_df: pd.DataFrame,
     forecasts_df: pd.DataFrame,
-    config: dict,
 ):
     """Stores all the model related artifacts
 
@@ -71,5 +70,28 @@ def save_run_artifacts(
         index=False,
     )
 
-    with open(run_dir / "config.yaml", "w") as f:
-        yaml.safe_dump(config, f)
+
+def conf_to_params(conf) -> dict:
+    """Convert dataclass config to dictionary
+
+    Parameters
+    ----------
+    conf : _type_
+        conf dataclass object of model configuration
+
+    Returns
+    -------
+    dict
+        MLflow acceptable configuration
+    """
+    d = asdict(conf)
+    out = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            for kk, vv in v.items():
+                out[f"{k}.{kk}"] = vv
+        elif isinstance(v, list):
+            out[k] = ",".join(map(str, v))
+        else:
+            out[k] = v
+    return out
